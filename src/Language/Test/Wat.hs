@@ -5,7 +5,7 @@ module Language.Test.Wat (spec) where
 import Data.ByteString.Lazy (LazyByteString)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Language.Wat
-import Prettyprinter (Doc, LayoutOptions (LayoutOptions), PageWidth (Unbounded), layoutPretty)
+import Prettyprinter (Doc, LayoutOptions (LayoutOptions), PageWidth (Unbounded), layoutPretty, pretty)
 import Prettyprinter.Render.Text (renderLazy)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.Golden (goldenVsString)
@@ -13,7 +13,7 @@ import Test.Tasty.Golden (goldenVsString)
 spec :: TestTree
 spec =
   testGroup "Wat" $
-    [ goldenVsString "x1" "asset/golden/Wat/x1.golden.txt" . return . encodeDocUtf8 . encodeWat $
+    [ goldenVsString "x1" "asset/golden/Wat/x1.golden.txt" . return . encodeDocUtf8 . pretty . encodeWatSexp $
         Module
           Nothing
           [ Export_Decl $
@@ -30,7 +30,7 @@ spec =
                     ]
                 )
           ],
-      goldenVsString "x1_sexp" "asset/golden/Wat/x1_sexp.golden.txt" . return . encodeDocUtf8 . encodeWat . encodeWatSexp $
+      goldenVsString "x1_sexp" "asset/golden/Wat/x1_sexp.golden.txt" . return . encodeDocUtf8 . pretty . encodeWatSexp $
         Module
           Nothing
           [ Export_Decl $
