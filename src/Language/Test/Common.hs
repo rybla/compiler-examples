@@ -8,12 +8,11 @@ import Control.Monad.IO.Class (liftIO)
 import Data.ByteString.Lazy (LazyByteString)
 import Data.Text.Lazy (LazyText)
 import Data.Text.Lazy qualified as LazyText
-import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Text.Lazy.Encoding qualified as LazyTextEncoding
 import Language.Wasm.Wat
 import Language.Wasm.Wat.Utilities (formatWat, toWasm)
 import System.Exit (ExitCode (ExitFailure, ExitSuccess))
-import System.Process.Text.Lazy (readProcessWithExitCode)
+import System.Process.ByteString.Lazy (readProcessWithExitCode)
 import Test.Tasty (DependencyType (AllSucceed), TestName, TestTree, after, testGroup)
 import Test.Tasty.Golden (goldenVsString)
 
@@ -28,7 +27,7 @@ testWatModule name dp m =
       after AllSucceed (name <> ".wat")
         . goldenVsString "wasm" (dp <> name <> ".golden.wasm")
         . (either (fail . ("Error:\n\n" <>) . LazyText.unpack) pure <=< runExceptT)
-        $ encodeWatModuleAsWasmByteString m,
+        $ toWasm m,
       after AllSucceed (name <> ".wasm")
         . goldenVsString "interp" (dp <> name <> ".out.golden.txt")
         . (either (fail . ("Error:\n\n" <>) . LazyText.unpack) pure <=< runExceptT)
@@ -43,23 +42,17 @@ encodeWatModuleAsUtf8 =
     <=< runExceptT
       . formatWat
 
-encodeWatModuleAsWasmText :: Module -> ExceptT LazyText IO LazyText
-encodeWatModuleAsWasmText = toWasm
-
-encodeWatModuleAsWasmByteString :: Module -> ExceptT LazyText IO LazyByteString
-encodeWatModuleAsWasmByteString = fmap LazyTextEncoding.encodeUtf8 . toWasm
-
 interpretWasmFile :: FilePath -> ExceptT LazyText IO LazyByteString
 interpretWasmFile fp = do
   (errorCode, out, err) <- liftIO $ readProcessWithExitCode "wasmtime" ["run", "-W", "gc=y", "--invoke", "main", fp] ""
   case errorCode of
-    ExitFailure _ -> pure . encodeUtf8 $ "Error\n\n" <> err
-    ExitSuccess -> pure . encodeUtf8 $ out
+    ExitFailure _ -> pure $ "Error\n\n" <> err
+    ExitSuccess -> pure out
 
 interpretWatModule :: Module -> ExceptT LazyText IO LazyByteString
 interpretWatModule m = do
-  t <- encodeWatModuleAsWasmText m
+  t <- toWasm m
   (errorCode, out, err) <- liftIO $ readProcessWithExitCode "wasmtime" ["run", "-W", "gc=y", "--invoke", "main", "-"] t
   case errorCode of
-    ExitFailure _ -> pure . encodeUtf8 $ "Error\n\n" <> err
-    ExitSuccess -> pure . encodeUtf8 $ out
+    ExitFailure _ -> pure $ "Error\n\n" <> err
+    ExitSuccess -> pure out
