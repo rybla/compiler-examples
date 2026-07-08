@@ -24,13 +24,13 @@ instance Pretty Wat where
   pretty (Leaf t) = reflow t
   pretty (Node t es) = parens $ reflow t <+> (hcat . punctuate " " . fmap pretty) es
 
-class EncodeWatSexp a where
+class EncodeWat a where
   encodeWatSexp :: a -> Wat
 
-class EncodeWatSexpList a where
+class EncodeWatList a where
   encodeWatSexpList :: a -> [Wat]
 
-instance (EncodeWatSexp a) => EncodeWatSexpList (Maybe a) where
+instance (EncodeWat a) => EncodeWatList (Maybe a) where
   encodeWatSexpList = foldMap (singleton . encodeWatSexp)
 
 --------------------------------
@@ -1025,7 +1025,7 @@ data Module = Module (Maybe Identifier) [Decl]
   deriving (Generic, Eq, Show, Ord)
 
 --------------------------------
--- EncodeWatSexp Instances and Helpers
+-- EncodeWat Instances and Helpers
 --------------------------------
 
 limitsSexpList :: Limits -> [Wat]
@@ -1069,40 +1069,40 @@ encMemSexp op m arg = Node op (encodeWatSexp m : memArgSexpList arg)
 encMemLaneSexp :: Text -> MemIdx -> MemArg -> LaneIdx -> Wat
 encMemLaneSexp op m arg lane = Node op (encodeWatSexp m : (memArgSexpList arg <> [encodeWatSexp lane]))
 
-instance EncodeWatSexp Text where
+instance EncodeWat Text where
   encodeWatSexp = Leaf
 
-instance EncodeWatSexp Natural where
+instance EncodeWat Natural where
   encodeWatSexp n = Leaf (Text.show n)
 
-instance EncodeWatSexp Int where
+instance EncodeWat Int where
   encodeWatSexp i = Leaf (Text.show i)
 
-instance EncodeWatSexp Integer where
+instance EncodeWat Integer where
   encodeWatSexp i = Leaf (Text.show i)
 
-instance EncodeWatSexp Float where
+instance EncodeWat Float where
   encodeWatSexp f = Leaf (Text.show f)
 
-instance EncodeWatSexp ByteString where
+instance EncodeWat ByteString where
   encodeWatSexp bs = Leaf (Text.show bs)
 
-instance EncodeWatSexp Name where
+instance EncodeWat Name where
   encodeWatSexp (Name t) = Leaf (Text.show t)
 
-instance EncodeWatSexp Identifier where
+instance EncodeWat Identifier where
   encodeWatSexp (Identifier t) = Leaf ("$" <> t)
 
-instance EncodeWatSexp NumType where
+instance EncodeWat NumType where
   encodeWatSexp I32_NumType = Leaf "i32"
   encodeWatSexp I64_NumType = Leaf "i64"
   encodeWatSexp F32_NumType = Leaf "f32"
   encodeWatSexp F64_NumType = Leaf "f64"
 
-instance EncodeWatSexp VecType where
+instance EncodeWat VecType where
   encodeWatSexp V128_VecType = Leaf "v128"
 
-instance EncodeWatSexp AbsHeapType where
+instance EncodeWat AbsHeapType where
   encodeWatSexp Any_AbsHeapType = Leaf "any"
   encodeWatSexp Eq_AbsHeapType = Leaf "eq"
   encodeWatSexp I31_AbsHeapType = Leaf "i31"
@@ -1116,106 +1116,106 @@ instance EncodeWatSexp AbsHeapType where
   encodeWatSexp Extern_AbsHeapType = Leaf "extern"
   encodeWatSexp NoExtern_AbsHeapType = Leaf "noextern"
 
-instance EncodeWatSexp HeapType where
+instance EncodeWat HeapType where
   encodeWatSexp (AbsHeapType_HeapType aht) = encodeWatSexp aht
   encodeWatSexp (TypeIdx_HeapType ti) = encodeWatSexp ti
 
-instance EncodeWatSexp Null where
+instance EncodeWat Null where
   encodeWatSexp Null = Leaf "null"
 
-instance EncodeWatSexp RefType where
+instance EncodeWat RefType where
   encodeWatSexp (RefType nullM ht) = Node "ref" (encodeWatSexpList nullM <> [encodeWatSexp ht])
 
-instance EncodeWatSexp ValType where
+instance EncodeWat ValType where
   encodeWatSexp (NumType_ValType nt) = encodeWatSexp nt
   encodeWatSexp (VecType_ValType vt) = encodeWatSexp vt
   encodeWatSexp (RefType_ValType rt) = encodeWatSexp rt
 
-instance EncodeWatSexp CompType where
+instance EncodeWat CompType where
   encodeWatSexp (Struct_CompType fs) = Node "struct" (fmap encodeWatSexp fs)
   encodeWatSexp (Array_CompType ft) = Node "array" [encodeWatSexp ft]
   encodeWatSexp (Func_CompType ps rs) = Node "func" (fmap encodeWatSexp ps <> fmap encodeWatSexp rs)
 
-instance EncodeWatSexp Field where
+instance EncodeWat Field where
   encodeWatSexp (Field idM ft) = Node "field" (encodeWatSexpList idM <> [encodeWatSexp ft])
 
-instance EncodeWatSexp Param where
+instance EncodeWat Param where
   encodeWatSexp (Param idM vt) = Node "param" (encodeWatSexpList idM <> [encodeWatSexp vt])
 
-instance EncodeWatSexp Result where
+instance EncodeWat Result where
   encodeWatSexp (Result vt) = Node "result" [encodeWatSexp vt]
 
-instance EncodeWatSexp FieldType where
+instance EncodeWat FieldType where
   encodeWatSexp (FieldType isMut st) =
     if isMut
       then Node "mut" [encodeWatSexp st]
       else encodeWatSexp st
 
-instance EncodeWatSexp StorageType where
+instance EncodeWat StorageType where
   encodeWatSexp (ValType_StorageType vt) = encodeWatSexp vt
   encodeWatSexp (PackType_StorageType pt) = encodeWatSexp pt
 
-instance EncodeWatSexp PackType where
+instance EncodeWat PackType where
   encodeWatSexp I8_PackType = Leaf "i8"
   encodeWatSexp I16_PackType = Leaf "i16"
 
-instance EncodeWatSexp Final where
+instance EncodeWat Final where
   encodeWatSexp Final = Leaf "final"
 
-instance EncodeWatSexp SubType where
+instance EncodeWat SubType where
   encodeWatSexp (SubType fM tis ct) = Node "sub" (encodeWatSexpList fM <> (fmap encodeWatSexp tis <> [encodeWatSexp ct]))
 
-instance EncodeWatSexp TypeDef where
+instance EncodeWat TypeDef where
   encodeWatSexp (TypeDef idM st) = Node "type" (encodeWatSexpList idM <> [encodeWatSexp st])
 
-instance EncodeWatSexp RecType where
+instance EncodeWat RecType where
   encodeWatSexp (RecType tds) = Node "rec" (fmap encodeWatSexp tds)
 
-instance EncodeWatSexp AddrType where
+instance EncodeWat AddrType where
   encodeWatSexp I32_AddrType = Leaf "i32"
   encodeWatSexp I64_AddrType = Leaf "i64"
 
-instance EncodeWatSexpList Limits where
+instance EncodeWatList Limits where
   encodeWatSexpList = limitsSexpList
 
-instance EncodeWatSexp TagType where
+instance EncodeWat TagType where
   encodeWatSexp (TagType tu) = encodeWatSexp tu
 
-instance EncodeWatSexp GlobalType where
+instance EncodeWat GlobalType where
   encodeWatSexp (GlobalType isMut vt) =
     if isMut
       then Node "mut" [encodeWatSexp vt]
       else encodeWatSexp vt
 
-instance EncodeWatSexpList MemType where
+instance EncodeWatList MemType where
   encodeWatSexpList = memTypeSexpList
 
-instance EncodeWatSexpList TableType where
+instance EncodeWatList TableType where
   encodeWatSexpList = tableTypeSexpList
 
-instance EncodeWatSexp ExternalType where
+instance EncodeWat ExternalType where
   encodeWatSexp (Tag_ExternalType idM jt) = Node "tag" (encodeWatSexpList idM <> [encodeWatSexp jt])
   encodeWatSexp (Global_ExternalType idM gt) = Node "global" (encodeWatSexpList idM <> [encodeWatSexp gt])
   encodeWatSexp (Memory_ExternalType idM mt) = Node "memory" (encodeWatSexpList idM <> memTypeSexpList mt)
   encodeWatSexp (Table_ExternalType idM tt) = Node "table" (encodeWatSexpList idM <> tableTypeSexpList tt)
   encodeWatSexp (Func_ExternalType idM tu) = Node "func" (encodeWatSexpList idM <> [encodeWatSexp tu])
 
-instance EncodeWatSexp TypeUse where
+instance EncodeWat TypeUse where
   encodeWatSexp (TypeUse ti) = Node "type" [encodeWatSexp ti]
 
-instance EncodeWatSexpList Label where
+instance EncodeWatList Label where
   encodeWatSexpList (Label idM) = encodeWatSexpList idM
 
-instance EncodeWatSexpList BlockType where
+instance EncodeWatList BlockType where
   encodeWatSexpList = blockTypeSexpList
 
-instance EncodeWatSexp Catch where
+instance EncodeWat Catch where
   encodeWatSexp (Catch tx l) = Node "catch" [encodeWatSexp tx, encodeWatSexp l]
   encodeWatSexp (CatchRef tx l) = Node "catch_ref" [encodeWatSexp tx, encodeWatSexp l]
   encodeWatSexp (CatchAll l) = Node "catch_all" [encodeWatSexp l]
   encodeWatSexp (CatchAllRef l) = Node "catch_all_ref" [encodeWatSexp l]
 
-instance EncodeWatSexp BlockInstr where
+instance EncodeWat BlockInstr where
   encodeWatSexp (Block_BlockInstr idM bt body _) =
     Node "block" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
   encodeWatSexp (Loop_BlockInstr idM bt body _) =
@@ -1225,13 +1225,13 @@ instance EncodeWatSexp BlockInstr where
   encodeWatSexp (TryTable_BlockInstr idM bt cs body _) =
     Node "try_table" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp cs <> fmap encodeWatSexp body))
 
-instance EncodeWatSexpList MemArg where
+instance EncodeWatList MemArg where
   encodeWatSexpList = memArgSexpList
 
-instance EncodeWatSexp LaneIdx where
+instance EncodeWat LaneIdx where
   encodeWatSexp (LaneIdx n) = encodeWatSexp n
 
-instance EncodeWatSexp PlainInstr where
+instance EncodeWat PlainInstr where
   encodeWatSexp Unreachable_PlainInstr = Leaf "unreachable"
   encodeWatSexp Nop_PlainInstr = Leaf "nop"
   encodeWatSexp Drop_PlainInstr = Leaf "drop"
@@ -1715,15 +1715,15 @@ instance EncodeWatSexp PlainInstr where
   encodeWatSexp I64x2ExtmulHighI32x4S_PlainInstr = Leaf "i64x2.extmul_high_i32x4_s"
   encodeWatSexp I64x2ExtmulHighI32x4U_PlainInstr = Leaf "i64x2.extmul_high_i32x4_u"
 
-instance EncodeWatSexp Instr where
+instance EncodeWat Instr where
   encodeWatSexp (Plain_Instr p) = encodeWatSexp p
   encodeWatSexp (Block_Instr bi) = encodeWatSexp bi
   encodeWatSexp (Folded_Instr fi) = encodeWatSexp fi
 
-instance EncodeWatSexpList Instrs where
+instance EncodeWatList Instrs where
   encodeWatSexpList = instrsSexpList
 
-instance EncodeWatSexp FoldedInstr where
+instance EncodeWat FoldedInstr where
   encodeWatSexp (Plain_FoldedInstr p inputs) =
     let Node op kids = encodeWatSexp p
      in Node op (kids <> fmap encodeWatSexp inputs)
@@ -1736,102 +1736,102 @@ instance EncodeWatSexp FoldedInstr where
   encodeWatSexp (TryTable_FoldedInstr idM bt cs body) =
     Node "try_table" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp cs <> fmap encodeWatSexp body))
 
-instance EncodeWatSexpList Expr where
+instance EncodeWatList Expr where
   encodeWatSexpList = exprSexpList
 
-instance EncodeWatSexp Idx where
+instance EncodeWat Idx where
   encodeWatSexp (Index_Idx n) = encodeWatSexp n
   encodeWatSexp (Identifier_Idx i) = encodeWatSexp i
 
-instance EncodeWatSexp TypeIdx where
+instance EncodeWat TypeIdx where
   encodeWatSexp (TypeIdx i) = encodeWatSexp i
 
-instance EncodeWatSexp FuncIdx where
+instance EncodeWat FuncIdx where
   encodeWatSexp (FuncIdx i) = encodeWatSexp i
 
-instance EncodeWatSexp GlobalIdx where
+instance EncodeWat GlobalIdx where
   encodeWatSexp (GlobalIdx i) = encodeWatSexp i
 
-instance EncodeWatSexp TableIdx where
+instance EncodeWat TableIdx where
   encodeWatSexp (TableIdx i) = encodeWatSexp i
 
-instance EncodeWatSexp MemIdx where
+instance EncodeWat MemIdx where
   encodeWatSexp (MemIdx i) = encodeWatSexp i
 
-instance EncodeWatSexp TagIdx where
+instance EncodeWat TagIdx where
   encodeWatSexp (TagIdx i) = encodeWatSexp i
 
-instance EncodeWatSexp ElemIdx where
+instance EncodeWat ElemIdx where
   encodeWatSexp (ElemIdx i) = encodeWatSexp i
 
-instance EncodeWatSexp DataIdx where
+instance EncodeWat DataIdx where
   encodeWatSexp (DataIdx i) = encodeWatSexp i
 
-instance EncodeWatSexp LabelIdx where
+instance EncodeWat LabelIdx where
   encodeWatSexp (LabelIdx i) = encodeWatSexp i
 
-instance EncodeWatSexp LocalIdx where
+instance EncodeWat LocalIdx where
   encodeWatSexp (LocalIdx i) = encodeWatSexp i
 
-instance EncodeWatSexp FieldIdx where
+instance EncodeWat FieldIdx where
   encodeWatSexp (FieldIdx i) = encodeWatSexp i
 
-instance EncodeWatSexp Type where
+instance EncodeWat Type where
   encodeWatSexp (Type rt) = encodeWatSexp rt
 
-instance EncodeWatSexp Tag where
+instance EncodeWat Tag where
   encodeWatSexp (Tag idM tt) = Node "tag" (encodeWatSexpList idM <> [encodeWatSexp tt])
 
-instance EncodeWatSexp Global where
+instance EncodeWat Global where
   encodeWatSexp (Global idM gt e) = Node "global" (encodeWatSexpList idM <> [encodeWatSexp gt] <> encodeWatSexpList e)
 
-instance EncodeWatSexp Mem where
+instance EncodeWat Mem where
   encodeWatSexp (Mem idM mt) = Node "memory" (encodeWatSexpList idM <> memTypeSexpList mt)
 
-instance EncodeWatSexp Table where
+instance EncodeWat Table where
   encodeWatSexp (Table idM tt e) = Node "table" (encodeWatSexpList idM <> (tableTypeSexpList tt <> encodeWatSexpList e))
 
-instance EncodeWatSexp Local where
+instance EncodeWat Local where
   encodeWatSexp (Local idM vt) = Node "local" (encodeWatSexpList idM <> [encodeWatSexp vt])
 
-instance EncodeWatSexp Func where
+instance EncodeWat Func where
   encodeWatSexp (Func idM tuM ls e) = Node "func" (encodeWatSexpList idM <> (encodeWatSexpList tuM <> fmap encodeWatSexp ls <> exprSexpList e))
 
-instance EncodeWatSexpList DataMode where
+instance EncodeWatList DataMode where
   encodeWatSexpList = dataModeSexpList
 
-instance EncodeWatSexp DataSegment where
+instance EncodeWat DataSegment where
   encodeWatSexp (DataSegment idM mode bs) = Node "data" (encodeWatSexpList idM <> (dataModeSexpList mode <> [encodeWatSexp bs]))
 
-instance EncodeWatSexpList ElemMode where
+instance EncodeWatList ElemMode where
   encodeWatSexpList = elemModeSexpList
 
-instance EncodeWatSexp ElemExpr where
+instance EncodeWat ElemExpr where
   encodeWatSexp (ElemExpr e) = Node "item" (encodeWatSexpList e)
 
-instance EncodeWatSexpList ElemList where
+instance EncodeWatList ElemList where
   encodeWatSexpList = elemListSexpList
 
-instance EncodeWatSexp ElemSegment where
+instance EncodeWat ElemSegment where
   encodeWatSexp (ElemSegment idM mode el) = Node "elem" (encodeWatSexpList idM <> (elemModeSexpList mode <> elemListSexpList el))
 
-instance EncodeWatSexp Start where
+instance EncodeWat Start where
   encodeWatSexp (Start f) = Node "start" [encodeWatSexp f]
 
-instance EncodeWatSexp Import where
+instance EncodeWat Import where
   encodeWatSexp (Import nm1 nm2 et) = Node "import" [encodeWatSexp nm1, encodeWatSexp nm2, encodeWatSexp et]
 
-instance EncodeWatSexp ExternIdx where
+instance EncodeWat ExternIdx where
   encodeWatSexp (Tag_ExternIdx x) = Node "tag" [encodeWatSexp x]
   encodeWatSexp (Global_ExternIdx x) = Node "global" [encodeWatSexp x]
   encodeWatSexp (Memory_ExternIdx x) = Node "memory" [encodeWatSexp x]
   encodeWatSexp (Table_ExternIdx x) = Node "table" [encodeWatSexp x]
   encodeWatSexp (Func_ExternIdx x) = Node "func" [encodeWatSexp x]
 
-instance EncodeWatSexp Export where
+instance EncodeWat Export where
   encodeWatSexp (Export nm xx) = Node "export" [encodeWatSexp nm, encodeWatSexp xx]
 
-instance EncodeWatSexp Decl where
+instance EncodeWat Decl where
   encodeWatSexp (Type_Decl t) = encodeWatSexp t
   encodeWatSexp (Import_Decl i) = encodeWatSexp i
   encodeWatSexp (Tag_Decl t) = encodeWatSexp t
@@ -1844,5 +1844,5 @@ instance EncodeWatSexp Decl where
   encodeWatSexp (Start_Decl s) = encodeWatSexp s
   encodeWatSexp (Export_Decl e) = encodeWatSexp e
 
-instance EncodeWatSexp Module where
+instance EncodeWat Module where
   encodeWatSexp (Module idM decls) = Node "module" (encodeWatSexpList idM <> fmap encodeWatSexp decls)
