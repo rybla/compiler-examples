@@ -29,6 +29,8 @@ library
       Language.Calculator.Interpretation
       Language.Calculator.Syntax
       Language.Rtn.Syntax
+      Language.Test.Calculator
+      Language.Test.Common
       Language.Test.Spec
       Language.Test.Wasm
       Language.Test.Wasm.Wat
