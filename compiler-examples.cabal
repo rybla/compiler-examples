@@ -30,7 +30,6 @@ library
       Language.Test.Wasm.Wat
       Language.Wasm.Wat
       Language.Wasm.Wat.Utilities
-      Lib
       Utilities
       Utilities.Unsafe
   other-modules:
