@@ -23,28 +23,6 @@ instance EncodeWat Text where
 
 -- # 6 WebAssembly Text Format (WAT)
 
--- ## 6.2 Lexical Format
-
-data Token = Token Text
-  deriving (Generic, Eq, Show, Ord)
-
-instance EncodeWat Token where
-  encodeWat (Token t) = reflow t
-
--- ### 6.2.5 Annotation
-
-data Annot = Annot AnnotId [Token]
-  deriving (Generic, Eq, Show, Ord)
-
-instance EncodeWat Annot where
-  encodeWat (Annot i ts) = parens $ "@" <> encodeWat i <+> (hcat . punctuate " " . fmap encodeWat) ts
-
-data AnnotId = AnnotId Text
-  deriving (Generic, Eq, Show, Ord)
-
-instance EncodeWat AnnotId where
-  encodeWat (AnnotId t) = reflow t
-
 -- ## 6.3 Values
 
 -- ### 6.3.1 Integers
@@ -75,7 +53,7 @@ data Name = Name Text
   deriving (Generic, Eq, Show, Ord)
 
 instance EncodeWat Name where
-  encodeWat (Name t) = reflow t
+  encodeWat (Name t) = reflow . Text.show $ t
 
 -- ### 6.3.5 Identifiers
 
@@ -84,7 +62,7 @@ data Identifier = Identifier Text
   deriving (Generic, Eq, Show, Ord)
 
 instance EncodeWat Identifier where
-  encodeWat (Identifier t) = "$" <> reflow t
+  encodeWat (Identifier t) = reflow . Text.show $ t
 
 -- ## 6.4 Types
 
@@ -998,122 +976,122 @@ instance EncodeWat PlainInstr where
   encodeWat Unreachable_PlainInstr = "unreachable"
   encodeWat Nop_PlainInstr = "nop"
   encodeWat Drop_PlainInstr = "drop"
-  encodeWat (Select_PlainInstr rsM) = maybe "select" (\rs -> "select" <+> hsep (fmap encodeWat rs)) rsM
+  encodeWat (Select_PlainInstr rsM) = parens $ maybe "select" (\rs -> "select" <+> hsep (fmap encodeWat rs)) rsM
   -- ### 6.5.3 Plain Control Instructions
-  encodeWat (Br_PlainInstr l) = "br" <+> encodeWat l
-  encodeWat (BrIf_PlainInstr l) = "br_if" <+> encodeWat l
-  encodeWat (BrTable_PlainInstr ls l) = "br_table" <+> hsep (fmap encodeWat ls) <+> encodeWat l
+  encodeWat (Br_PlainInstr l) = parens $ "br" <+> encodeWat l
+  encodeWat (BrIf_PlainInstr l) = parens $ "br_if" <+> encodeWat l
+  encodeWat (BrTable_PlainInstr ls l) = parens $ "br_table" <+> hsep (fmap encodeWat ls) <+> encodeWat l
   encodeWat Return_PlainInstr = "return"
-  encodeWat (Call_PlainInstr f) = "call" <+> encodeWat f
-  encodeWat (ReturnCall_PlainInstr f) = "return_call" <+> encodeWat f
-  encodeWat (CallIndirect_PlainInstr t tu) = "call_indirect" <+> encodeWat t <+> encodeWat tu
-  encodeWat (ReturnCallIndirect_PlainInstr t tu) = "return_call_indirect" <+> encodeWat t <+> encodeWat tu
+  encodeWat (Call_PlainInstr f) = parens $ "call" <+> encodeWat f
+  encodeWat (ReturnCall_PlainInstr f) = parens $ "return_call" <+> encodeWat f
+  encodeWat (CallIndirect_PlainInstr t tu) = parens $ "call_indirect" <+> encodeWat t <+> encodeWat tu
+  encodeWat (ReturnCallIndirect_PlainInstr t tu) = parens $ "return_call_indirect" <+> encodeWat t <+> encodeWat tu
   -- ### 6.5.4 Variable Instructions
-  encodeWat (LocalGet_PlainInstr l) = "local.get" <+> encodeWat l
-  encodeWat (LocalSet_PlainInstr l) = "local.set" <+> encodeWat l
-  encodeWat (LocalTee_PlainInstr l) = "local.tee" <+> encodeWat l
-  encodeWat (GlobalGet_PlainInstr g) = "global.get" <+> encodeWat g
-  encodeWat (GlobalSet_PlainInstr g) = "global.set" <+> encodeWat g
+  encodeWat (LocalGet_PlainInstr l) = parens $ "local.get" <+> encodeWat l
+  encodeWat (LocalSet_PlainInstr l) = parens $ "local.set" <+> encodeWat l
+  encodeWat (LocalTee_PlainInstr l) = parens $ "local.tee" <+> encodeWat l
+  encodeWat (GlobalGet_PlainInstr g) = parens $ "global.get" <+> encodeWat g
+  encodeWat (GlobalSet_PlainInstr g) = parens $ "global.set" <+> encodeWat g
   -- ### 6.5.5 Table Instructions
-  encodeWat (TableGet_PlainInstr t) = "table.get" <+> encodeWat t
-  encodeWat (TableSet_PlainInstr t) = "table.set" <+> encodeWat t
-  encodeWat (TableSize_PlainInstr t) = "table.size" <+> encodeWat t
-  encodeWat (TableGrow_PlainInstr t) = "table.grow" <+> encodeWat t
-  encodeWat (TableFill_PlainInstr t) = "table.fill" <+> encodeWat t
-  encodeWat (TableCopy_PlainInstr t1 t2) = "table.copy" <+> encodeWat t1 <+> encodeWat t2
-  encodeWat (TableInit_PlainInstr t e) = "table.init" <+> encodeWat t <+> encodeWat e
-  encodeWat (ElemDrop_PlainInstr e) = "elem.drop" <+> encodeWat e
+  encodeWat (TableGet_PlainInstr t) = parens $ "table.get" <+> encodeWat t
+  encodeWat (TableSet_PlainInstr t) = parens $ "table.set" <+> encodeWat t
+  encodeWat (TableSize_PlainInstr t) = parens $ "table.size" <+> encodeWat t
+  encodeWat (TableGrow_PlainInstr t) = parens $ "table.grow" <+> encodeWat t
+  encodeWat (TableFill_PlainInstr t) = parens $ "table.fill" <+> encodeWat t
+  encodeWat (TableCopy_PlainInstr t1 t2) = parens $ "table.copy" <+> encodeWat t1 <+> encodeWat t2
+  encodeWat (TableInit_PlainInstr t e) = parens $ "table.init" <+> encodeWat t <+> encodeWat e
+  encodeWat (ElemDrop_PlainInstr e) = parens $ "elem.drop" <+> encodeWat e
   -- ### 6.5.6 Memory Instructions
-  encodeWat (I32Load_PlainInstr m arg) = encMem "i32.load" m arg
-  encodeWat (I64Load_PlainInstr m arg) = encMem "i64.load" m arg
-  encodeWat (F32Load_PlainInstr m arg) = encMem "f32.load" m arg
-  encodeWat (F64Load_PlainInstr m arg) = encMem "f64.load" m arg
-  encodeWat (I32Load8S_PlainInstr m arg) = encMem "i32.load8_s" m arg
-  encodeWat (I32Load8U_PlainInstr m arg) = encMem "i32.load8_u" m arg
-  encodeWat (I32Load16S_PlainInstr m arg) = encMem "i32.load16_s" m arg
-  encodeWat (I32Load16U_PlainInstr m arg) = encMem "i32.load16_u" m arg
-  encodeWat (I64Load8S_PlainInstr m arg) = encMem "i64.load8_s" m arg
-  encodeWat (I64Load8U_PlainInstr m arg) = encMem "i64.load8_u" m arg
-  encodeWat (I64Load16S_PlainInstr m arg) = encMem "i64.load16_s" m arg
-  encodeWat (I64Load16U_PlainInstr m arg) = encMem "i64.load16_u" m arg
-  encodeWat (I64Load32S_PlainInstr m arg) = encMem "i64.load32_s" m arg
-  encodeWat (I64Load32U_PlainInstr m arg) = encMem "i64.load32_u" m arg
-  encodeWat (V128Load_PlainInstr m arg) = encMem "v128.load" m arg
-  encodeWat (V128Load8x8S_PlainInstr m arg) = encMem "v128.load8x8_s" m arg
-  encodeWat (V128Load8x8U_PlainInstr m arg) = encMem "v128.load8x8_u" m arg
-  encodeWat (V128Load16x4S_PlainInstr m arg) = encMem "v128.load16x4_s" m arg
-  encodeWat (V128Load16x4U_PlainInstr m arg) = encMem "v128.load16x4_u" m arg
-  encodeWat (V128Load32x2S_PlainInstr m arg) = encMem "v128.load32x2_s" m arg
-  encodeWat (V128Load32x2U_PlainInstr m arg) = encMem "v128.load32x2_u" m arg
-  encodeWat (V128Load8Splat_PlainInstr m arg) = encMem "v128.load8_splat" m arg
-  encodeWat (V128Load16Splat_PlainInstr m arg) = encMem "v128.load16_splat" m arg
-  encodeWat (V128Load32Splat_PlainInstr m arg) = encMem "v128.load32_splat" m arg
-  encodeWat (V128Load64Splat_PlainInstr m arg) = encMem "v128.load64_splat" m arg
-  encodeWat (V128Load32Zero_PlainInstr m arg) = encMem "v128.load32_zero" m arg
-  encodeWat (V128Load64Zero_PlainInstr m arg) = encMem "v128.load64_zero" m arg
-  encodeWat (V128Load8Lane_PlainInstr m arg lane) = encMemLane "v128.load8_lane" m arg lane
-  encodeWat (V128Load16Lane_PlainInstr m arg lane) = encMemLane "v128.load16_lane" m arg lane
-  encodeWat (V128Load32Lane_PlainInstr m arg lane) = encMemLane "v128.load32_lane" m arg lane
-  encodeWat (V128Load64Lane_PlainInstr m arg lane) = encMemLane "v128.load64_lane" m arg lane
-  encodeWat (I32Store_PlainInstr m arg) = encMem "i32.store" m arg
-  encodeWat (I64Store_PlainInstr m arg) = encMem "i64.store" m arg
-  encodeWat (F32Store_PlainInstr m arg) = encMem "f32.store" m arg
-  encodeWat (F64Store_PlainInstr m arg) = encMem "f64.store" m arg
-  encodeWat (I32Store8_PlainInstr m arg) = encMem "i32.store8" m arg
-  encodeWat (I32Store16_PlainInstr m arg) = encMem "i32.store16" m arg
-  encodeWat (I64Store8_PlainInstr m arg) = encMem "i64.store8" m arg
-  encodeWat (I64Store16_PlainInstr m arg) = encMem "i64.store16" m arg
-  encodeWat (I64Store32_PlainInstr m arg) = encMem "i64.store32" m arg
-  encodeWat (V128Store_PlainInstr m arg) = encMem "v128.store" m arg
-  encodeWat (V128Store8Lane_PlainInstr m arg lane) = encMemLane "v128.store8_lane" m arg lane
-  encodeWat (V128Store16Lane_PlainInstr m arg lane) = encMemLane "v128.store16_lane" m arg lane
-  encodeWat (V128Store32Lane_PlainInstr m arg lane) = encMemLane "v128.store32_lane" m arg lane
-  encodeWat (V128Store64Lane_PlainInstr m arg lane) = encMemLane "v128.store64_lane" m arg lane
-  encodeWat (MemorySize_PlainInstr m) = "memory.size" <+> encodeWat m
-  encodeWat (MemoryGrow_PlainInstr m) = "memory.grow" <+> encodeWat m
-  encodeWat (MemoryFill_PlainInstr m) = "memory.fill" <+> encodeWat m
-  encodeWat (MemoryCopy_PlainInstr m1 m2) = "memory.copy" <+> encodeWat m1 <+> encodeWat m2
-  encodeWat (MemoryInit_PlainInstr m d) = "memory.init" <+> encodeWat m <+> encodeWat d
-  encodeWat (DataDrop_PlainInstr d) = "data.drop" <+> encodeWat d
+  encodeWat (I32Load_PlainInstr m arg) = parens $ encMem "i32.load" m arg
+  encodeWat (I64Load_PlainInstr m arg) = parens $ encMem "i64.load" m arg
+  encodeWat (F32Load_PlainInstr m arg) = parens $ encMem "f32.load" m arg
+  encodeWat (F64Load_PlainInstr m arg) = parens $ encMem "f64.load" m arg
+  encodeWat (I32Load8S_PlainInstr m arg) = parens $ encMem "i32.load8_s" m arg
+  encodeWat (I32Load8U_PlainInstr m arg) = parens $ encMem "i32.load8_u" m arg
+  encodeWat (I32Load16S_PlainInstr m arg) = parens $ encMem "i32.load16_s" m arg
+  encodeWat (I32Load16U_PlainInstr m arg) = parens $ encMem "i32.load16_u" m arg
+  encodeWat (I64Load8S_PlainInstr m arg) = parens $ encMem "i64.load8_s" m arg
+  encodeWat (I64Load8U_PlainInstr m arg) = parens $ encMem "i64.load8_u" m arg
+  encodeWat (I64Load16S_PlainInstr m arg) = parens $ encMem "i64.load16_s" m arg
+  encodeWat (I64Load16U_PlainInstr m arg) = parens $ encMem "i64.load16_u" m arg
+  encodeWat (I64Load32S_PlainInstr m arg) = parens $ encMem "i64.load32_s" m arg
+  encodeWat (I64Load32U_PlainInstr m arg) = parens $ encMem "i64.load32_u" m arg
+  encodeWat (V128Load_PlainInstr m arg) = parens $ encMem "v128.load" m arg
+  encodeWat (V128Load8x8S_PlainInstr m arg) = parens $ encMem "v128.load8x8_s" m arg
+  encodeWat (V128Load8x8U_PlainInstr m arg) = parens $ encMem "v128.load8x8_u" m arg
+  encodeWat (V128Load16x4S_PlainInstr m arg) = parens $ encMem "v128.load16x4_s" m arg
+  encodeWat (V128Load16x4U_PlainInstr m arg) = parens $ encMem "v128.load16x4_u" m arg
+  encodeWat (V128Load32x2S_PlainInstr m arg) = parens $ encMem "v128.load32x2_s" m arg
+  encodeWat (V128Load32x2U_PlainInstr m arg) = parens $ encMem "v128.load32x2_u" m arg
+  encodeWat (V128Load8Splat_PlainInstr m arg) = parens $ encMem "v128.load8_splat" m arg
+  encodeWat (V128Load16Splat_PlainInstr m arg) = parens $ encMem "v128.load16_splat" m arg
+  encodeWat (V128Load32Splat_PlainInstr m arg) = parens $ encMem "v128.load32_splat" m arg
+  encodeWat (V128Load64Splat_PlainInstr m arg) = parens $ encMem "v128.load64_splat" m arg
+  encodeWat (V128Load32Zero_PlainInstr m arg) = parens $ encMem "v128.load32_zero" m arg
+  encodeWat (V128Load64Zero_PlainInstr m arg) = parens $ encMem "v128.load64_zero" m arg
+  encodeWat (V128Load8Lane_PlainInstr m arg lane) = parens $ encMemLane "v128.load8_lane" m arg lane
+  encodeWat (V128Load16Lane_PlainInstr m arg lane) = parens $ encMemLane "v128.load16_lane" m arg lane
+  encodeWat (V128Load32Lane_PlainInstr m arg lane) = parens $ encMemLane "v128.load32_lane" m arg lane
+  encodeWat (V128Load64Lane_PlainInstr m arg lane) = parens $ encMemLane "v128.load64_lane" m arg lane
+  encodeWat (I32Store_PlainInstr m arg) = parens $ encMem "i32.store" m arg
+  encodeWat (I64Store_PlainInstr m arg) = parens $ encMem "i64.store" m arg
+  encodeWat (F32Store_PlainInstr m arg) = parens $ encMem "f32.store" m arg
+  encodeWat (F64Store_PlainInstr m arg) = parens $ encMem "f64.store" m arg
+  encodeWat (I32Store8_PlainInstr m arg) = parens $ encMem "i32.store8" m arg
+  encodeWat (I32Store16_PlainInstr m arg) = parens $ encMem "i32.store16" m arg
+  encodeWat (I64Store8_PlainInstr m arg) = parens $ encMem "i64.store8" m arg
+  encodeWat (I64Store16_PlainInstr m arg) = parens $ encMem "i64.store16" m arg
+  encodeWat (I64Store32_PlainInstr m arg) = parens $ encMem "i64.store32" m arg
+  encodeWat (V128Store_PlainInstr m arg) = parens $ encMem "v128.store" m arg
+  encodeWat (V128Store8Lane_PlainInstr m arg lane) = parens $ encMemLane "v128.store8_lane" m arg lane
+  encodeWat (V128Store16Lane_PlainInstr m arg lane) = parens $ encMemLane "v128.store16_lane" m arg lane
+  encodeWat (V128Store32Lane_PlainInstr m arg lane) = parens $ encMemLane "v128.store32_lane" m arg lane
+  encodeWat (V128Store64Lane_PlainInstr m arg lane) = parens $ encMemLane "v128.store64_lane" m arg lane
+  encodeWat (MemorySize_PlainInstr m) = parens $ "memory.size" <+> encodeWat m
+  encodeWat (MemoryGrow_PlainInstr m) = parens $ "memory.grow" <+> encodeWat m
+  encodeWat (MemoryFill_PlainInstr m) = parens $ "memory.fill" <+> encodeWat m
+  encodeWat (MemoryCopy_PlainInstr m1 m2) = parens $ "memory.copy" <+> encodeWat m1 <+> encodeWat m2
+  encodeWat (MemoryInit_PlainInstr m d) = parens $ "memory.init" <+> encodeWat m <+> encodeWat d
+  encodeWat (DataDrop_PlainInstr d) = parens $ "data.drop" <+> encodeWat d
   -- ### 6.5.7 Reference Instructions
-  encodeWat (RefNull_PlainInstr ht) = "ref.null" <+> encodeWat ht
-  encodeWat (RefFunc_PlainInstr f) = "ref.func" <+> encodeWat f
-  encodeWat RefIsNull_PlainInstr = "ref.is_null"
-  encodeWat RefAsNonNull_PlainInstr = "ref.as_non_null"
-  encodeWat RefEq_PlainInstr = "ref.eq"
-  encodeWat (RefTest_PlainInstr rt) = "ref.test" <+> encodeWat rt
-  encodeWat (RefCast_PlainInstr rt) = "ref.cast" <+> encodeWat rt
+  encodeWat (RefNull_PlainInstr ht) = parens $ "ref.null" <+> encodeWat ht
+  encodeWat (RefFunc_PlainInstr f) = parens $ "ref.func" <+> encodeWat f
+  encodeWat RefIsNull_PlainInstr = parens "ref.is_null"
+  encodeWat RefAsNonNull_PlainInstr = parens "ref.as_non_null"
+  encodeWat RefEq_PlainInstr = parens "ref.eq"
+  encodeWat (RefTest_PlainInstr rt) = parens $ "ref.test" <+> encodeWat rt
+  encodeWat (RefCast_PlainInstr rt) = parens $ "ref.cast" <+> encodeWat rt
   -- ### 6.5.8 Aggregate Instructions
-  encodeWat RefI31_PlainInstr = "ref.i31"
-  encodeWat I31GetS_PlainInstr = "i31.get_s"
-  encodeWat I31GetU_PlainInstr = "i31.get_u"
-  encodeWat (StructNew_PlainInstr t) = "struct.new" <+> encodeWat t
-  encodeWat (StructNewDefault_PlainInstr t) = "struct.new_default" <+> encodeWat t
-  encodeWat (StructGet_PlainInstr t f) = "struct.get" <+> encodeWat t <+> encodeWat f
-  encodeWat (StructGetS_PlainInstr t f) = "struct.get_s" <+> encodeWat t <+> encodeWat f
-  encodeWat (StructGetU_PlainInstr t f) = "struct.get_u" <+> encodeWat t <+> encodeWat f
-  encodeWat (StructSet_PlainInstr t f) = "struct.set" <+> encodeWat t <+> encodeWat f
-  encodeWat (ArrayNew_PlainInstr t) = "array.new" <+> encodeWat t
-  encodeWat (ArrayNewDefault_PlainInstr t) = "array.new_default" <+> encodeWat t
-  encodeWat (ArrayNewFixed_PlainInstr t n) = "array.new_fixed" <+> encodeWat t <+> pretty n
-  encodeWat (ArrayNewData_PlainInstr t d) = "array.new_data" <+> encodeWat t <+> encodeWat d
-  encodeWat (ArrayNewElem_PlainInstr t e) = "array.new_elem" <+> encodeWat t <+> encodeWat e
-  encodeWat (ArrayGet_PlainInstr t) = "array.get" <+> encodeWat t
-  encodeWat (ArrayGetS_PlainInstr t) = "array.get_s" <+> encodeWat t
-  encodeWat (ArrayGetU_PlainInstr t) = "array.get_u" <+> encodeWat t
-  encodeWat (ArraySet_PlainInstr t) = "array.set" <+> encodeWat t
-  encodeWat ArrayLen_PlainInstr = "array.len"
-  encodeWat (ArrayFill_PlainInstr t) = "array.fill" <+> encodeWat t
-  encodeWat (ArrayCopy_PlainInstr t1 t2) = "array.copy" <+> encodeWat t1 <+> encodeWat t2
-  encodeWat (ArrayInitData_PlainInstr t d) = "array.init_data" <+> encodeWat t <+> encodeWat d
-  encodeWat (ArrayInitElem_PlainInstr t e) = "array.init_elem" <+> encodeWat t <+> encodeWat e
-  encodeWat AnyConvertExtern_PlainInstr = "any.convert_extern"
-  encodeWat ExternConvertAny_PlainInstr = "extern.convert_any"
+  encodeWat RefI31_PlainInstr = parens "ref.i31"
+  encodeWat I31GetS_PlainInstr = parens "i31.get_s"
+  encodeWat I31GetU_PlainInstr = parens "i31.get_u"
+  encodeWat (StructNew_PlainInstr t) = parens $ "struct.new" <+> encodeWat t
+  encodeWat (StructNewDefault_PlainInstr t) = parens $ "struct.new_default" <+> encodeWat t
+  encodeWat (StructGet_PlainInstr t f) = parens $ "struct.get" <+> encodeWat t <+> encodeWat f
+  encodeWat (StructGetS_PlainInstr t f) = parens $ "struct.get_s" <+> encodeWat t <+> encodeWat f
+  encodeWat (StructGetU_PlainInstr t f) = parens $ "struct.get_u" <+> encodeWat t <+> encodeWat f
+  encodeWat (StructSet_PlainInstr t f) = parens $ "struct.set" <+> encodeWat t <+> encodeWat f
+  encodeWat (ArrayNew_PlainInstr t) = parens $ "array.new" <+> encodeWat t
+  encodeWat (ArrayNewDefault_PlainInstr t) = parens $ "array.new_default" <+> encodeWat t
+  encodeWat (ArrayNewFixed_PlainInstr t n) = parens $ "array.new_fixed" <+> encodeWat t <+> pretty n
+  encodeWat (ArrayNewData_PlainInstr t d) = parens $ "array.new_data" <+> encodeWat t <+> encodeWat d
+  encodeWat (ArrayNewElem_PlainInstr t e) = parens $ "array.new_elem" <+> encodeWat t <+> encodeWat e
+  encodeWat (ArrayGet_PlainInstr t) = parens $ "array.get" <+> encodeWat t
+  encodeWat (ArrayGetS_PlainInstr t) = parens $ "array.get_s" <+> encodeWat t
+  encodeWat (ArrayGetU_PlainInstr t) = parens $ "array.get_u" <+> encodeWat t
+  encodeWat (ArraySet_PlainInstr t) = parens $ "array.set" <+> encodeWat t
+  encodeWat ArrayLen_PlainInstr = parens "array.len"
+  encodeWat (ArrayFill_PlainInstr t) = parens $ "array.fill" <+> encodeWat t
+  encodeWat (ArrayCopy_PlainInstr t1 t2) = parens $ "array.copy" <+> encodeWat t1 <+> encodeWat t2
+  encodeWat (ArrayInitData_PlainInstr t d) = parens $ "array.init_data" <+> encodeWat t <+> encodeWat d
+  encodeWat (ArrayInitElem_PlainInstr t e) = parens $ "array.init_elem" <+> encodeWat t <+> encodeWat e
+  encodeWat AnyConvertExtern_PlainInstr = parens "any.convert_extern"
+  encodeWat ExternConvertAny_PlainInstr = parens "extern.convert_any"
   -- ### 6.5.9 Numeric Const Instructions
-  encodeWat (I32Const_PlainInstr c) = "i32.const" <+> pretty c
-  encodeWat (I64Const_PlainInstr c) = "i64.const" <+> pretty c
-  encodeWat (F32Const_PlainInstr c) = "f32.const" <+> pretty c
-  encodeWat (F64Const_PlainInstr c) = "f64.const" <+> pretty c
+  encodeWat (I32Const_PlainInstr c) = parens $ "i32.const" <+> pretty c
+  encodeWat (I64Const_PlainInstr c) = parens $ "i64.const" <+> pretty c
+  encodeWat (F32Const_PlainInstr c) = parens $ "f32.const" <+> pretty c
+  encodeWat (F64Const_PlainInstr c) = parens $ "f64.const" <+> pretty c
   -- ### 6.5.9 Numeric Operators
   -- i32 operators
   encodeWat I32Eqz_PlainInstr = "i32.eqz"
@@ -1258,8 +1236,8 @@ instance EncodeWat PlainInstr where
   encodeWat F64ReinterpretI64_PlainInstr = "f64.reinterpret_i64"
   -- ### 6.5.10 Vector Instructions
   -- vector const and shuffle
-  encodeWat (V128Const_PlainInstr shape cs) = "v128.const" <+> reflow shape <+> hsep (fmap pretty cs)
-  encodeWat (I8x16Shuffle_PlainInstr lanes) = "i8x16.shuffle" <+> hsep (fmap encodeWat lanes)
+  encodeWat (V128Const_PlainInstr shape cs) = parens $ "v128.const" <+> reflow shape <+> hsep (fmap pretty cs)
+  encodeWat (I8x16Shuffle_PlainInstr lanes) = parens $ "i8x16.shuffle" <+> hsep (fmap encodeWat lanes)
   -- swizzle and splats
   encodeWat I8x16Swizzle_PlainInstr = "i8x16.swizzle"
   encodeWat I8x16RelaxedSwizzle_PlainInstr = "i8x16.relaxed_swizzle"
@@ -1270,20 +1248,20 @@ instance EncodeWat PlainInstr where
   encodeWat F32x4Splat_PlainInstr = "f32x4.splat"
   encodeWat F64x2Splat_PlainInstr = "f64x2.splat"
   -- lanes
-  encodeWat (I8x16ExtractLaneS_PlainInstr lane) = "i8x16.extract_lane_s" <+> encodeWat lane
-  encodeWat (I8x16ExtractLaneU_PlainInstr lane) = "i8x16.extract_lane_u" <+> encodeWat lane
-  encodeWat (I16x8ExtractLaneS_PlainInstr lane) = "i16x8.extract_lane_s" <+> encodeWat lane
-  encodeWat (I16x8ExtractLaneU_PlainInstr lane) = "i16x8.extract_lane_u" <+> encodeWat lane
-  encodeWat (I32x4ExtractLane_PlainInstr lane) = "i32x4.extract_lane" <+> encodeWat lane
-  encodeWat (I64x2ExtractLane_PlainInstr lane) = "i64x2.extract_lane" <+> encodeWat lane
-  encodeWat (F32x4ExtractLane_PlainInstr lane) = "f32x4.extract_lane" <+> encodeWat lane
-  encodeWat (F64x2ExtractLane_PlainInstr lane) = "f64x2.extract_lane" <+> encodeWat lane
-  encodeWat (I8x16ReplaceLane_PlainInstr lane) = "i8x16.replace_lane" <+> encodeWat lane
-  encodeWat (I16x8ReplaceLane_PlainInstr lane) = "i16x8.replace_lane" <+> encodeWat lane
-  encodeWat (I32x4ReplaceLane_PlainInstr lane) = "i32x4.replace_lane" <+> encodeWat lane
-  encodeWat (I64x2ReplaceLane_PlainInstr lane) = "i64x2.replace_lane" <+> encodeWat lane
-  encodeWat (F32x4ReplaceLane_PlainInstr lane) = "f32x4.replace_lane" <+> encodeWat lane
-  encodeWat (F64x2ReplaceLane_PlainInstr lane) = "f64x2.replace_lane" <+> encodeWat lane
+  encodeWat (I8x16ExtractLaneS_PlainInstr lane) = parens $ "i8x16.extract_lane_s" <+> encodeWat lane
+  encodeWat (I8x16ExtractLaneU_PlainInstr lane) = parens $ "i8x16.extract_lane_u" <+> encodeWat lane
+  encodeWat (I16x8ExtractLaneS_PlainInstr lane) = parens $ "i16x8.extract_lane_s" <+> encodeWat lane
+  encodeWat (I16x8ExtractLaneU_PlainInstr lane) = parens $ "i16x8.extract_lane_u" <+> encodeWat lane
+  encodeWat (I32x4ExtractLane_PlainInstr lane) = parens $ "i32x4.extract_lane" <+> encodeWat lane
+  encodeWat (I64x2ExtractLane_PlainInstr lane) = parens $ "i64x2.extract_lane" <+> encodeWat lane
+  encodeWat (F32x4ExtractLane_PlainInstr lane) = parens $ "f32x4.extract_lane" <+> encodeWat lane
+  encodeWat (F64x2ExtractLane_PlainInstr lane) = parens $ "f64x2.extract_lane" <+> encodeWat lane
+  encodeWat (I8x16ReplaceLane_PlainInstr lane) = parens $ "i8x16.replace_lane" <+> encodeWat lane
+  encodeWat (I16x8ReplaceLane_PlainInstr lane) = parens $ "i16x8.replace_lane" <+> encodeWat lane
+  encodeWat (I32x4ReplaceLane_PlainInstr lane) = parens $ "i32x4.replace_lane" <+> encodeWat lane
+  encodeWat (I64x2ReplaceLane_PlainInstr lane) = parens $ "i64x2.replace_lane" <+> encodeWat lane
+  encodeWat (F32x4ReplaceLane_PlainInstr lane) = parens $ "f32x4.replace_lane" <+> encodeWat lane
+  encodeWat (F64x2ReplaceLane_PlainInstr lane) = parens $ "f64x2.replace_lane" <+> encodeWat lane
   -- vector ops
   encodeWat V128AnyTrue_PlainInstr = "v128.any_true"
   encodeWat V128Not_PlainInstr = "v128.not"
@@ -1561,7 +1539,7 @@ data Idx
 
 instance EncodeWat Idx where
   encodeWat (Index_Idx n) = pretty n
-  encodeWat (Identifier_Idx i) = encodeWat i
+  encodeWat (Identifier_Idx (Identifier i)) = "$" <> reflow i
 
 data TypeIdx = TypeIdx Idx
   deriving (Generic, Eq, Show, Ord)
