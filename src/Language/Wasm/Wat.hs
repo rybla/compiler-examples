@@ -25,13 +25,13 @@ instance Pretty Wat where
   pretty (Node t es) = parens $ reflow t <+> (hcat . punctuate " " . fmap pretty) es
 
 class EncodeWat a where
-  encodeWatSexp :: a -> Wat
+  encodeWat :: a -> Wat
 
 class EncodeWatList a where
-  encodeWatSexpList :: a -> [Wat]
+  encodeWatList :: a -> [Wat]
 
 instance (EncodeWat a) => EncodeWatList (Maybe a) where
-  encodeWatSexpList = foldMap (singleton . encodeWatSexp)
+  encodeWatList = foldMap (singleton . encodeWat)
 
 --------------------------------
 
@@ -1029,820 +1029,820 @@ data Module = Module (Maybe Identifier) [Decl]
 --------------------------------
 
 limitsSexpList :: Limits -> [Wat]
-limitsSexpList (Limits n mM) = encodeWatSexp n : foldMap (\m -> [Leaf (Text.pack (show m))]) mM
+limitsSexpList (Limits n mM) = encodeWat n : foldMap (\m -> [Leaf (Text.pack (show m))]) mM
 
 memTypeSexpList :: MemType -> [Wat]
-memTypeSexpList (MemType atM lims) = encodeWatSexpList atM <> limitsSexpList lims
+memTypeSexpList (MemType atM lims) = encodeWatList atM <> limitsSexpList lims
 
 tableTypeSexpList :: TableType -> [Wat]
-tableTypeSexpList (TableType atM lims rt) = encodeWatSexpList atM <> (limitsSexpList lims <> [encodeWatSexp rt])
+tableTypeSexpList (TableType atM lims rt) = encodeWatList atM <> (limitsSexpList lims <> [encodeWat rt])
 
 blockTypeSexpList :: BlockType -> [Wat]
-blockTypeSexpList (Result_BlockType rM) = encodeWatSexpList rM
-blockTypeSexpList (TypeUse_BlockType tu) = [encodeWatSexp tu]
+blockTypeSexpList (Result_BlockType rM) = encodeWatList rM
+blockTypeSexpList (TypeUse_BlockType tu) = [encodeWat tu]
 
 memArgSexpList :: MemArg -> [Wat]
 memArgSexpList (MemArg offsetM alignM) = foldMap (\o -> [Leaf ("offset=" <> Text.pack (show o))]) offsetM <> foldMap (\a -> [Leaf ("align=" <> Text.pack (show a))]) alignM
 
 exprSexpList :: Expr -> [Wat]
-exprSexpList (Expr is) = fmap encodeWatSexp is
+exprSexpList (Expr is) = fmap encodeWat is
 
 instrsSexpList :: Instrs -> [Wat]
-instrsSexpList (Instrs is) = fmap encodeWatSexp is
+instrsSexpList (Instrs is) = fmap encodeWat is
 
 elemListSexpList :: ElemList -> [Wat]
 elemListSexpList (ElemList rt es) =
-  encodeWatSexp rt : fmap encodeWatSexp es
+  encodeWat rt : fmap encodeWat es
 
 dataModeSexpList :: DataMode -> [Wat]
 dataModeSexpList Passive_DataMode = []
-dataModeSexpList (Active_DataMode x e) = [Node "memory" [encodeWatSexp x], Node "offset" (exprSexpList e)]
+dataModeSexpList (Active_DataMode x e) = [Node "memory" [encodeWat x], Node "offset" (exprSexpList e)]
 
 elemModeSexpList :: ElemMode -> [Wat]
 elemModeSexpList Passive_ElemMode = []
-elemModeSexpList (Active_ElemMode x e) = [Node "table" [encodeWatSexp x], Node "offset" (exprSexpList e)]
+elemModeSexpList (Active_ElemMode x e) = [Node "table" [encodeWat x], Node "offset" (exprSexpList e)]
 elemModeSexpList Declare_ElemMode = [Leaf "declare"]
 
 encMemSexp :: Text -> MemIdx -> MemArg -> Wat
-encMemSexp op m arg = Node op (encodeWatSexp m : memArgSexpList arg)
+encMemSexp op m arg = Node op (encodeWat m : memArgSexpList arg)
 
 encMemLaneSexp :: Text -> MemIdx -> MemArg -> LaneIdx -> Wat
-encMemLaneSexp op m arg lane = Node op (encodeWatSexp m : (memArgSexpList arg <> [encodeWatSexp lane]))
+encMemLaneSexp op m arg lane = Node op (encodeWat m : (memArgSexpList arg <> [encodeWat lane]))
 
 instance EncodeWat Text where
-  encodeWatSexp = Leaf
+  encodeWat = Leaf
 
 instance EncodeWat Natural where
-  encodeWatSexp n = Leaf (Text.show n)
+  encodeWat n = Leaf (Text.show n)
 
 instance EncodeWat Int where
-  encodeWatSexp i = Leaf (Text.show i)
+  encodeWat i = Leaf (Text.show i)
 
 instance EncodeWat Integer where
-  encodeWatSexp i = Leaf (Text.show i)
+  encodeWat i = Leaf (Text.show i)
 
 instance EncodeWat Float where
-  encodeWatSexp f = Leaf (Text.show f)
+  encodeWat f = Leaf (Text.show f)
 
 instance EncodeWat ByteString where
-  encodeWatSexp bs = Leaf (Text.show bs)
+  encodeWat bs = Leaf (Text.show bs)
 
 instance EncodeWat Name where
-  encodeWatSexp (Name t) = Leaf (Text.show t)
+  encodeWat (Name t) = Leaf (Text.show t)
 
 instance EncodeWat Identifier where
-  encodeWatSexp (Identifier t) = Leaf ("$" <> t)
+  encodeWat (Identifier t) = Leaf ("$" <> t)
 
 instance EncodeWat NumType where
-  encodeWatSexp I32_NumType = Leaf "i32"
-  encodeWatSexp I64_NumType = Leaf "i64"
-  encodeWatSexp F32_NumType = Leaf "f32"
-  encodeWatSexp F64_NumType = Leaf "f64"
+  encodeWat I32_NumType = Leaf "i32"
+  encodeWat I64_NumType = Leaf "i64"
+  encodeWat F32_NumType = Leaf "f32"
+  encodeWat F64_NumType = Leaf "f64"
 
 instance EncodeWat VecType where
-  encodeWatSexp V128_VecType = Leaf "v128"
+  encodeWat V128_VecType = Leaf "v128"
 
 instance EncodeWat AbsHeapType where
-  encodeWatSexp Any_AbsHeapType = Leaf "any"
-  encodeWatSexp Eq_AbsHeapType = Leaf "eq"
-  encodeWatSexp I31_AbsHeapType = Leaf "i31"
-  encodeWatSexp Struct_AbsHeapType = Leaf "struct"
-  encodeWatSexp Array_AbsHeapType = Leaf "array"
-  encodeWatSexp None_AbsHeapType = Leaf "none"
-  encodeWatSexp Func_AbsHeapType = Leaf "func"
-  encodeWatSexp NoFunc_AbsHeapType = Leaf "nofunc"
-  encodeWatSexp Exn_AbsHeapType = Leaf "exn"
-  encodeWatSexp NoExn_AbsHeapType = Leaf "noexn"
-  encodeWatSexp Extern_AbsHeapType = Leaf "extern"
-  encodeWatSexp NoExtern_AbsHeapType = Leaf "noextern"
+  encodeWat Any_AbsHeapType = Leaf "any"
+  encodeWat Eq_AbsHeapType = Leaf "eq"
+  encodeWat I31_AbsHeapType = Leaf "i31"
+  encodeWat Struct_AbsHeapType = Leaf "struct"
+  encodeWat Array_AbsHeapType = Leaf "array"
+  encodeWat None_AbsHeapType = Leaf "none"
+  encodeWat Func_AbsHeapType = Leaf "func"
+  encodeWat NoFunc_AbsHeapType = Leaf "nofunc"
+  encodeWat Exn_AbsHeapType = Leaf "exn"
+  encodeWat NoExn_AbsHeapType = Leaf "noexn"
+  encodeWat Extern_AbsHeapType = Leaf "extern"
+  encodeWat NoExtern_AbsHeapType = Leaf "noextern"
 
 instance EncodeWat HeapType where
-  encodeWatSexp (AbsHeapType_HeapType aht) = encodeWatSexp aht
-  encodeWatSexp (TypeIdx_HeapType ti) = encodeWatSexp ti
+  encodeWat (AbsHeapType_HeapType aht) = encodeWat aht
+  encodeWat (TypeIdx_HeapType ti) = encodeWat ti
 
 instance EncodeWat Null where
-  encodeWatSexp Null = Leaf "null"
+  encodeWat Null = Leaf "null"
 
 instance EncodeWat RefType where
-  encodeWatSexp (RefType nullM ht) = Node "ref" (encodeWatSexpList nullM <> [encodeWatSexp ht])
+  encodeWat (RefType nullM ht) = Node "ref" (encodeWatList nullM <> [encodeWat ht])
 
 instance EncodeWat ValType where
-  encodeWatSexp (NumType_ValType nt) = encodeWatSexp nt
-  encodeWatSexp (VecType_ValType vt) = encodeWatSexp vt
-  encodeWatSexp (RefType_ValType rt) = encodeWatSexp rt
+  encodeWat (NumType_ValType nt) = encodeWat nt
+  encodeWat (VecType_ValType vt) = encodeWat vt
+  encodeWat (RefType_ValType rt) = encodeWat rt
 
 instance EncodeWat CompType where
-  encodeWatSexp (Struct_CompType fs) = Node "struct" (fmap encodeWatSexp fs)
-  encodeWatSexp (Array_CompType ft) = Node "array" [encodeWatSexp ft]
-  encodeWatSexp (Func_CompType ps rs) = Node "func" (fmap encodeWatSexp ps <> fmap encodeWatSexp rs)
+  encodeWat (Struct_CompType fs) = Node "struct" (fmap encodeWat fs)
+  encodeWat (Array_CompType ft) = Node "array" [encodeWat ft]
+  encodeWat (Func_CompType ps rs) = Node "func" (fmap encodeWat ps <> fmap encodeWat rs)
 
 instance EncodeWat Field where
-  encodeWatSexp (Field idM ft) = Node "field" (encodeWatSexpList idM <> [encodeWatSexp ft])
+  encodeWat (Field idM ft) = Node "field" (encodeWatList idM <> [encodeWat ft])
 
 instance EncodeWat Param where
-  encodeWatSexp (Param idM vt) = Node "param" (encodeWatSexpList idM <> [encodeWatSexp vt])
+  encodeWat (Param idM vt) = Node "param" (encodeWatList idM <> [encodeWat vt])
 
 instance EncodeWat Result where
-  encodeWatSexp (Result vt) = Node "result" [encodeWatSexp vt]
+  encodeWat (Result vt) = Node "result" [encodeWat vt]
 
 instance EncodeWat FieldType where
-  encodeWatSexp (FieldType isMut st) =
+  encodeWat (FieldType isMut st) =
     if isMut
-      then Node "mut" [encodeWatSexp st]
-      else encodeWatSexp st
+      then Node "mut" [encodeWat st]
+      else encodeWat st
 
 instance EncodeWat StorageType where
-  encodeWatSexp (ValType_StorageType vt) = encodeWatSexp vt
-  encodeWatSexp (PackType_StorageType pt) = encodeWatSexp pt
+  encodeWat (ValType_StorageType vt) = encodeWat vt
+  encodeWat (PackType_StorageType pt) = encodeWat pt
 
 instance EncodeWat PackType where
-  encodeWatSexp I8_PackType = Leaf "i8"
-  encodeWatSexp I16_PackType = Leaf "i16"
+  encodeWat I8_PackType = Leaf "i8"
+  encodeWat I16_PackType = Leaf "i16"
 
 instance EncodeWat Final where
-  encodeWatSexp Final = Leaf "final"
+  encodeWat Final = Leaf "final"
 
 instance EncodeWat SubType where
-  encodeWatSexp (SubType fM tis ct) = Node "sub" (encodeWatSexpList fM <> (fmap encodeWatSexp tis <> [encodeWatSexp ct]))
+  encodeWat (SubType fM tis ct) = Node "sub" (encodeWatList fM <> (fmap encodeWat tis <> [encodeWat ct]))
 
 instance EncodeWat TypeDef where
-  encodeWatSexp (TypeDef idM st) = Node "type" (encodeWatSexpList idM <> [encodeWatSexp st])
+  encodeWat (TypeDef idM st) = Node "type" (encodeWatList idM <> [encodeWat st])
 
 instance EncodeWat RecType where
-  encodeWatSexp (RecType tds) = Node "rec" (fmap encodeWatSexp tds)
+  encodeWat (RecType tds) = Node "rec" (fmap encodeWat tds)
 
 instance EncodeWat AddrType where
-  encodeWatSexp I32_AddrType = Leaf "i32"
-  encodeWatSexp I64_AddrType = Leaf "i64"
+  encodeWat I32_AddrType = Leaf "i32"
+  encodeWat I64_AddrType = Leaf "i64"
 
 instance EncodeWatList Limits where
-  encodeWatSexpList = limitsSexpList
+  encodeWatList = limitsSexpList
 
 instance EncodeWat TagType where
-  encodeWatSexp (TagType tu) = encodeWatSexp tu
+  encodeWat (TagType tu) = encodeWat tu
 
 instance EncodeWat GlobalType where
-  encodeWatSexp (GlobalType isMut vt) =
+  encodeWat (GlobalType isMut vt) =
     if isMut
-      then Node "mut" [encodeWatSexp vt]
-      else encodeWatSexp vt
+      then Node "mut" [encodeWat vt]
+      else encodeWat vt
 
 instance EncodeWatList MemType where
-  encodeWatSexpList = memTypeSexpList
+  encodeWatList = memTypeSexpList
 
 instance EncodeWatList TableType where
-  encodeWatSexpList = tableTypeSexpList
+  encodeWatList = tableTypeSexpList
 
 instance EncodeWat ExternalType where
-  encodeWatSexp (Tag_ExternalType idM jt) = Node "tag" (encodeWatSexpList idM <> [encodeWatSexp jt])
-  encodeWatSexp (Global_ExternalType idM gt) = Node "global" (encodeWatSexpList idM <> [encodeWatSexp gt])
-  encodeWatSexp (Memory_ExternalType idM mt) = Node "memory" (encodeWatSexpList idM <> memTypeSexpList mt)
-  encodeWatSexp (Table_ExternalType idM tt) = Node "table" (encodeWatSexpList idM <> tableTypeSexpList tt)
-  encodeWatSexp (Func_ExternalType idM tu) = Node "func" (encodeWatSexpList idM <> [encodeWatSexp tu])
+  encodeWat (Tag_ExternalType idM jt) = Node "tag" (encodeWatList idM <> [encodeWat jt])
+  encodeWat (Global_ExternalType idM gt) = Node "global" (encodeWatList idM <> [encodeWat gt])
+  encodeWat (Memory_ExternalType idM mt) = Node "memory" (encodeWatList idM <> memTypeSexpList mt)
+  encodeWat (Table_ExternalType idM tt) = Node "table" (encodeWatList idM <> tableTypeSexpList tt)
+  encodeWat (Func_ExternalType idM tu) = Node "func" (encodeWatList idM <> [encodeWat tu])
 
 instance EncodeWat TypeUse where
-  encodeWatSexp (TypeUse ti) = Node "type" [encodeWatSexp ti]
+  encodeWat (TypeUse ti) = Node "type" [encodeWat ti]
 
 instance EncodeWatList Label where
-  encodeWatSexpList (Label idM) = encodeWatSexpList idM
+  encodeWatList (Label idM) = encodeWatList idM
 
 instance EncodeWatList BlockType where
-  encodeWatSexpList = blockTypeSexpList
+  encodeWatList = blockTypeSexpList
 
 instance EncodeWat Catch where
-  encodeWatSexp (Catch tx l) = Node "catch" [encodeWatSexp tx, encodeWatSexp l]
-  encodeWatSexp (CatchRef tx l) = Node "catch_ref" [encodeWatSexp tx, encodeWatSexp l]
-  encodeWatSexp (CatchAll l) = Node "catch_all" [encodeWatSexp l]
-  encodeWatSexp (CatchAllRef l) = Node "catch_all_ref" [encodeWatSexp l]
+  encodeWat (Catch tx l) = Node "catch" [encodeWat tx, encodeWat l]
+  encodeWat (CatchRef tx l) = Node "catch_ref" [encodeWat tx, encodeWat l]
+  encodeWat (CatchAll l) = Node "catch_all" [encodeWat l]
+  encodeWat (CatchAllRef l) = Node "catch_all_ref" [encodeWat l]
 
 instance EncodeWat BlockInstr where
-  encodeWatSexp (Block_BlockInstr idM bt body _) =
-    Node "block" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
-  encodeWatSexp (Loop_BlockInstr idM bt body _) =
-    Node "loop" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
-  encodeWatSexp (If_BlockInstr idM bt thenBody _ elseBody _) =
-    Node "if" (encodeWatSexpList idM <> (blockTypeSexpList bt <> [Node "then" (fmap encodeWatSexp thenBody)] <> [Node "else" (fmap encodeWatSexp elseBody) | not (null elseBody)]))
-  encodeWatSexp (TryTable_BlockInstr idM bt cs body _) =
-    Node "try_table" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp cs <> fmap encodeWatSexp body))
+  encodeWat (Block_BlockInstr idM bt body _) =
+    Node "block" (encodeWatList idM <> (blockTypeSexpList bt <> fmap encodeWat body))
+  encodeWat (Loop_BlockInstr idM bt body _) =
+    Node "loop" (encodeWatList idM <> (blockTypeSexpList bt <> fmap encodeWat body))
+  encodeWat (If_BlockInstr idM bt thenBody _ elseBody _) =
+    Node "if" (encodeWatList idM <> (blockTypeSexpList bt <> [Node "then" (fmap encodeWat thenBody)] <> [Node "else" (fmap encodeWat elseBody) | not (null elseBody)]))
+  encodeWat (TryTable_BlockInstr idM bt cs body _) =
+    Node "try_table" (encodeWatList idM <> (blockTypeSexpList bt <> fmap encodeWat cs <> fmap encodeWat body))
 
 instance EncodeWatList MemArg where
-  encodeWatSexpList = memArgSexpList
+  encodeWatList = memArgSexpList
 
 instance EncodeWat LaneIdx where
-  encodeWatSexp (LaneIdx n) = encodeWatSexp n
+  encodeWat (LaneIdx n) = encodeWat n
 
 instance EncodeWat PlainInstr where
-  encodeWatSexp Unreachable_PlainInstr = Leaf "unreachable"
-  encodeWatSexp Nop_PlainInstr = Leaf "nop"
-  encodeWatSexp Drop_PlainInstr = Leaf "drop"
-  encodeWatSexp (Select_PlainInstr rsM) = Node "select" (foldMap (fmap encodeWatSexp) rsM)
-  encodeWatSexp (Br_PlainInstr l) = Node "br" [encodeWatSexp l]
-  encodeWatSexp (BrIf_PlainInstr l) = Node "br_if" [encodeWatSexp l]
-  encodeWatSexp (BrTable_PlainInstr ls l) = Node "br_table" (fmap encodeWatSexp ls <> [encodeWatSexp l])
-  encodeWatSexp Return_PlainInstr = Leaf "return"
-  encodeWatSexp (Call_PlainInstr f) = Node "call" [encodeWatSexp f]
-  encodeWatSexp (ReturnCall_PlainInstr f) = Node "return_call" [encodeWatSexp f]
-  encodeWatSexp (CallIndirect_PlainInstr t tu) = Node "call_indirect" [encodeWatSexp t, encodeWatSexp tu]
-  encodeWatSexp (ReturnCallIndirect_PlainInstr t tu) = Node "return_call_indirect" [encodeWatSexp t, encodeWatSexp tu]
-  encodeWatSexp (LocalGet_PlainInstr l) = Node "local.get" [encodeWatSexp l]
-  encodeWatSexp (LocalSet_PlainInstr l) = Node "local.set" [encodeWatSexp l]
-  encodeWatSexp (LocalTee_PlainInstr l) = Node "local.tee" [encodeWatSexp l]
-  encodeWatSexp (GlobalGet_PlainInstr g) = Node "global.get" [encodeWatSexp g]
-  encodeWatSexp (GlobalSet_PlainInstr g) = Node "global.set" [encodeWatSexp g]
-  encodeWatSexp (TableGet_PlainInstr t) = Node "table.get" [encodeWatSexp t]
-  encodeWatSexp (TableSet_PlainInstr t) = Node "table.set" [encodeWatSexp t]
-  encodeWatSexp (TableSize_PlainInstr t) = Node "table.size" [encodeWatSexp t]
-  encodeWatSexp (TableGrow_PlainInstr t) = Node "table.grow" [encodeWatSexp t]
-  encodeWatSexp (TableFill_PlainInstr t) = Node "table.fill" [encodeWatSexp t]
-  encodeWatSexp (TableCopy_PlainInstr t1 t2) = Node "table.copy" [encodeWatSexp t1, encodeWatSexp t2]
-  encodeWatSexp (TableInit_PlainInstr t e) = Node "table.init" [encodeWatSexp t, encodeWatSexp e]
-  encodeWatSexp (ElemDrop_PlainInstr e) = Node "elem.drop" [encodeWatSexp e]
-  encodeWatSexp (I32Load_PlainInstr m arg) = encMemSexp "i32.load" m arg
-  encodeWatSexp (I64Load_PlainInstr m arg) = encMemSexp "i64.load" m arg
-  encodeWatSexp (F32Load_PlainInstr m arg) = encMemSexp "f32.load" m arg
-  encodeWatSexp (F64Load_PlainInstr m arg) = encMemSexp "f64.load" m arg
-  encodeWatSexp (I32Load8S_PlainInstr m arg) = encMemSexp "i32.load8_s" m arg
-  encodeWatSexp (I32Load8U_PlainInstr m arg) = encMemSexp "i32.load8_u" m arg
-  encodeWatSexp (I32Load16S_PlainInstr m arg) = encMemSexp "i32.load16_s" m arg
-  encodeWatSexp (I32Load16U_PlainInstr m arg) = encMemSexp "i32.load16_u" m arg
-  encodeWatSexp (I64Load8S_PlainInstr m arg) = encMemSexp "i64.load8_s" m arg
-  encodeWatSexp (I64Load8U_PlainInstr m arg) = encMemSexp "i64.load8_u" m arg
-  encodeWatSexp (I64Load16S_PlainInstr m arg) = encMemSexp "i64.load16_s" m arg
-  encodeWatSexp (I64Load16U_PlainInstr m arg) = encMemSexp "i64.load16_u" m arg
-  encodeWatSexp (I64Load32S_PlainInstr m arg) = encMemSexp "i64.load32_s" m arg
-  encodeWatSexp (I64Load32U_PlainInstr m arg) = encMemSexp "i64.load32_u" m arg
-  encodeWatSexp (V128Load_PlainInstr m arg) = encMemSexp "v128.load" m arg
-  encodeWatSexp (V128Load8x8S_PlainInstr m arg) = encMemSexp "v128.load8x8_s" m arg
-  encodeWatSexp (V128Load8x8U_PlainInstr m arg) = encMemSexp "v128.load8x8_u" m arg
-  encodeWatSexp (V128Load16x4S_PlainInstr m arg) = encMemSexp "v128.load16x4_s" m arg
-  encodeWatSexp (V128Load16x4U_PlainInstr m arg) = encMemSexp "v128.load16x4_u" m arg
-  encodeWatSexp (V128Load32x2S_PlainInstr m arg) = encMemSexp "v128.load32x2_s" m arg
-  encodeWatSexp (V128Load32x2U_PlainInstr m arg) = encMemSexp "v128.load32x2_u" m arg
-  encodeWatSexp (V128Load8Splat_PlainInstr m arg) = encMemSexp "v128.load8_splat" m arg
-  encodeWatSexp (V128Load16Splat_PlainInstr m arg) = encMemSexp "v128.load16_splat" m arg
-  encodeWatSexp (V128Load32Splat_PlainInstr m arg) = encMemSexp "v128.load32_splat" m arg
-  encodeWatSexp (V128Load64Splat_PlainInstr m arg) = encMemSexp "v128.load64_splat" m arg
-  encodeWatSexp (V128Load32Zero_PlainInstr m arg) = encMemSexp "v128.load32_zero" m arg
-  encodeWatSexp (V128Load64Zero_PlainInstr m arg) = encMemSexp "v128.load64_zero" m arg
-  encodeWatSexp (V128Load8Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.load8_lane" m arg lane
-  encodeWatSexp (V128Load16Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.load16_lane" m arg lane
-  encodeWatSexp (V128Load32Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.load32_lane" m arg lane
-  encodeWatSexp (V128Load64Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.load64_lane" m arg lane
-  encodeWatSexp (I32Store_PlainInstr m arg) = encMemSexp "i32.store" m arg
-  encodeWatSexp (I64Store_PlainInstr m arg) = encMemSexp "i64.store" m arg
-  encodeWatSexp (F32Store_PlainInstr m arg) = encMemSexp "f32.store" m arg
-  encodeWatSexp (F64Store_PlainInstr m arg) = encMemSexp "f64.store" m arg
-  encodeWatSexp (I32Store8_PlainInstr m arg) = encMemSexp "i32.store8" m arg
-  encodeWatSexp (I32Store16_PlainInstr m arg) = encMemSexp "i32.store16" m arg
-  encodeWatSexp (I64Store8_PlainInstr m arg) = encMemSexp "i64.store8" m arg
-  encodeWatSexp (I64Store16_PlainInstr m arg) = encMemSexp "i64.store16" m arg
-  encodeWatSexp (I64Store32_PlainInstr m arg) = encMemSexp "i64.store32" m arg
-  encodeWatSexp (V128Store_PlainInstr m arg) = encMemSexp "v128.store" m arg
-  encodeWatSexp (V128Store8Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.store8_lane" m arg lane
-  encodeWatSexp (V128Store16Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.store16_lane" m arg lane
-  encodeWatSexp (V128Store32Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.store32_lane" m arg lane
-  encodeWatSexp (V128Store64Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.store64_lane" m arg lane
-  encodeWatSexp (MemorySize_PlainInstr m) = Node "memory.size" [encodeWatSexp m]
-  encodeWatSexp (MemoryGrow_PlainInstr m) = Node "memory.grow" [encodeWatSexp m]
-  encodeWatSexp (MemoryFill_PlainInstr m) = Node "memory.fill" [encodeWatSexp m]
-  encodeWatSexp (MemoryCopy_PlainInstr m1 m2) = Node "memory.copy" [encodeWatSexp m1, encodeWatSexp m2]
-  encodeWatSexp (MemoryInit_PlainInstr m d) = Node "memory.init" [encodeWatSexp m, encodeWatSexp d]
-  encodeWatSexp (DataDrop_PlainInstr d) = Node "data.drop" [encodeWatSexp d]
-  encodeWatSexp (RefNull_PlainInstr ht) = Node "ref.null" [encodeWatSexp ht]
-  encodeWatSexp (RefFunc_PlainInstr f) = Node "ref.func" [encodeWatSexp f]
-  encodeWatSexp RefIsNull_PlainInstr = Leaf "ref.is_null"
-  encodeWatSexp RefAsNonNull_PlainInstr = Leaf "ref.as_non_null"
-  encodeWatSexp RefEq_PlainInstr = Leaf "ref.eq"
-  encodeWatSexp (RefTest_PlainInstr rt) = Node "ref.test" [encodeWatSexp rt]
-  encodeWatSexp (RefCast_PlainInstr rt) = Node "ref.cast" [encodeWatSexp rt]
-  encodeWatSexp RefI31_PlainInstr = Leaf "ref.i31"
-  encodeWatSexp I31GetS_PlainInstr = Leaf "i31.get_s"
-  encodeWatSexp I31GetU_PlainInstr = Leaf "i31.get_u"
-  encodeWatSexp (StructNew_PlainInstr t) = Node "struct.new" [encodeWatSexp t]
-  encodeWatSexp (StructNewDefault_PlainInstr t) = Node "struct.new_default" [encodeWatSexp t]
-  encodeWatSexp (StructGet_PlainInstr t f) = Node "struct.get" [encodeWatSexp t, encodeWatSexp f]
-  encodeWatSexp (StructGetS_PlainInstr t f) = Node "struct.get_s" [encodeWatSexp t, encodeWatSexp f]
-  encodeWatSexp (StructGetU_PlainInstr t f) = Node "struct.get_u" [encodeWatSexp t, encodeWatSexp f]
-  encodeWatSexp (StructSet_PlainInstr t f) = Node "struct.set" [encodeWatSexp t, encodeWatSexp f]
-  encodeWatSexp (ArrayNew_PlainInstr t) = Node "array.new" [encodeWatSexp t]
-  encodeWatSexp (ArrayNewDefault_PlainInstr t) = Node "array.new_default" [encodeWatSexp t]
-  encodeWatSexp (ArrayNewFixed_PlainInstr t n) = Node "array.new_fixed" [encodeWatSexp t, encodeWatSexp n]
-  encodeWatSexp (ArrayNewData_PlainInstr t d) = Node "array.new_data" [encodeWatSexp t, encodeWatSexp d]
-  encodeWatSexp (ArrayNewElem_PlainInstr t e) = Node "array.new_elem" [encodeWatSexp t, encodeWatSexp e]
-  encodeWatSexp (ArrayGet_PlainInstr t) = Node "array.get" [encodeWatSexp t]
-  encodeWatSexp (ArrayGetS_PlainInstr t) = Node "array.get_s" [encodeWatSexp t]
-  encodeWatSexp (ArrayGetU_PlainInstr t) = Node "array.get_u" [encodeWatSexp t]
-  encodeWatSexp (ArraySet_PlainInstr t) = Node "array.set" [encodeWatSexp t]
-  encodeWatSexp ArrayLen_PlainInstr = Leaf "array.len"
-  encodeWatSexp (ArrayFill_PlainInstr t) = Node "array.fill" [encodeWatSexp t]
-  encodeWatSexp (ArrayCopy_PlainInstr t1 t2) = Node "array.copy" [encodeWatSexp t1, encodeWatSexp t2]
-  encodeWatSexp (ArrayInitData_PlainInstr t d) = Node "array.init_data" [encodeWatSexp t, encodeWatSexp d]
-  encodeWatSexp (ArrayInitElem_PlainInstr t e) = Node "array.init_elem" [encodeWatSexp t, encodeWatSexp e]
-  encodeWatSexp AnyConvertExtern_PlainInstr = Leaf "any.convert_extern"
-  encodeWatSexp ExternConvertAny_PlainInstr = Leaf "extern.convert_any"
-  encodeWatSexp (I32Const_PlainInstr c) = Node "i32.const" [encodeWatSexp c]
-  encodeWatSexp (I64Const_PlainInstr c) = Node "i64.const" [encodeWatSexp c]
-  encodeWatSexp (F32Const_PlainInstr c) = Node "f32.const" [encodeWatSexp c]
-  encodeWatSexp (F64Const_PlainInstr c) = Node "f64.const" [encodeWatSexp c]
-  encodeWatSexp (V128Const_PlainInstr shape cs) = Node "v128.const" (Leaf shape : fmap encodeWatSexp cs)
-  encodeWatSexp (I8x16Shuffle_PlainInstr lanes) = Node "i8x16.shuffle" (fmap encodeWatSexp lanes)
-  encodeWatSexp (I8x16ExtractLaneS_PlainInstr lane) = Node "i8x16.extract_lane_s" [encodeWatSexp lane]
-  encodeWatSexp (I8x16ExtractLaneU_PlainInstr lane) = Node "i8x16.extract_lane_u" [encodeWatSexp lane]
-  encodeWatSexp (I16x8ExtractLaneS_PlainInstr lane) = Node "i16x8.extract_lane_s" [encodeWatSexp lane]
-  encodeWatSexp (I16x8ExtractLaneU_PlainInstr lane) = Node "i16x8.extract_lane_u" [encodeWatSexp lane]
-  encodeWatSexp (I32x4ExtractLane_PlainInstr lane) = Node "i32x4.extract_lane" [encodeWatSexp lane]
-  encodeWatSexp (I64x2ExtractLane_PlainInstr lane) = Node "i64x2.extract_lane" [encodeWatSexp lane]
-  encodeWatSexp (F32x4ExtractLane_PlainInstr lane) = Node "f32x4.extract_lane" [encodeWatSexp lane]
-  encodeWatSexp (F64x2ExtractLane_PlainInstr lane) = Node "f64x2.extract_lane" [encodeWatSexp lane]
-  encodeWatSexp (I8x16ReplaceLane_PlainInstr lane) = Node "i8x16.replace_lane" [encodeWatSexp lane]
-  encodeWatSexp (I16x8ReplaceLane_PlainInstr lane) = Node "i16x8.replace_lane" [encodeWatSexp lane]
-  encodeWatSexp (I32x4ReplaceLane_PlainInstr lane) = Node "i32x4.replace_lane" [encodeWatSexp lane]
-  encodeWatSexp (I64x2ReplaceLane_PlainInstr lane) = Node "i64x2.replace_lane" [encodeWatSexp lane]
-  encodeWatSexp (F32x4ReplaceLane_PlainInstr lane) = Node "f32x4.replace_lane" [encodeWatSexp lane]
-  encodeWatSexp (F64x2ReplaceLane_PlainInstr lane) = Node "f64x2.replace_lane" [encodeWatSexp lane]
-  encodeWatSexp I32Eqz_PlainInstr = Leaf "i32.eqz"
-  encodeWatSexp I32Eq_PlainInstr = Leaf "i32.eq"
-  encodeWatSexp I32Ne_PlainInstr = Leaf "i32.ne"
-  encodeWatSexp I32LtS_PlainInstr = Leaf "i32.lt_s"
-  encodeWatSexp I32LtU_PlainInstr = Leaf "i32.lt_u"
-  encodeWatSexp I32GtS_PlainInstr = Leaf "i32.gt_s"
-  encodeWatSexp I32GtU_PlainInstr = Leaf "i32.gt_u"
-  encodeWatSexp I32LeS_PlainInstr = Leaf "i32.le_s"
-  encodeWatSexp I32LeU_PlainInstr = Leaf "i32.le_u"
-  encodeWatSexp I32GeS_PlainInstr = Leaf "i32.ge_s"
-  encodeWatSexp I32GeU_PlainInstr = Leaf "i32.ge_u"
-  encodeWatSexp I32Clz_PlainInstr = Leaf "i32.clz"
-  encodeWatSexp I32Ctz_PlainInstr = Leaf "i32.ctz"
-  encodeWatSexp I32Popcnt_PlainInstr = Leaf "i32.popcnt"
-  encodeWatSexp I32Extend8S_PlainInstr = Leaf "i32.extend8_s"
-  encodeWatSexp I32Extend16S_PlainInstr = Leaf "i32.extend16_s"
-  encodeWatSexp I32Add_PlainInstr = Leaf "i32.add"
-  encodeWatSexp I32Sub_PlainInstr = Leaf "i32.sub"
-  encodeWatSexp I32Mul_PlainInstr = Leaf "i32.mul"
-  encodeWatSexp I32DivS_PlainInstr = Leaf "i32.div_s"
-  encodeWatSexp I32DivU_PlainInstr = Leaf "i32.div_u"
-  encodeWatSexp I32RemS_PlainInstr = Leaf "i32.rem_s"
-  encodeWatSexp I32RemU_PlainInstr = Leaf "i32.rem_u"
-  encodeWatSexp I32And_PlainInstr = Leaf "i32.and"
-  encodeWatSexp I32Or_PlainInstr = Leaf "i32.or"
-  encodeWatSexp I32Xor_PlainInstr = Leaf "i32.xor"
-  encodeWatSexp I32Shl_PlainInstr = Leaf "i32.shl"
-  encodeWatSexp I32ShrS_PlainInstr = Leaf "i32.shr_s"
-  encodeWatSexp I32ShrU_PlainInstr = Leaf "i32.shr_u"
-  encodeWatSexp I32Rotl_PlainInstr = Leaf "i32.rotl"
-  encodeWatSexp I32Rotr_PlainInstr = Leaf "i32.rotr"
-  encodeWatSexp I64Eqz_PlainInstr = Leaf "i64.eqz"
-  encodeWatSexp I64Eq_PlainInstr = Leaf "i64.eq"
-  encodeWatSexp I64Ne_PlainInstr = Leaf "i64.ne"
-  encodeWatSexp I64LtS_PlainInstr = Leaf "i64.lt_s"
-  encodeWatSexp I64LtU_PlainInstr = Leaf "i64.lt_u"
-  encodeWatSexp I64GtS_PlainInstr = Leaf "i64.gt_s"
-  encodeWatSexp I64GtU_PlainInstr = Leaf "i64.gt_u"
-  encodeWatSexp I64LeS_PlainInstr = Leaf "i64.le_s"
-  encodeWatSexp I64LeU_PlainInstr = Leaf "i64.le_u"
-  encodeWatSexp I64GeS_PlainInstr = Leaf "i64.ge_s"
-  encodeWatSexp I64GeU_PlainInstr = Leaf "i64.ge_u"
-  encodeWatSexp I64Clz_PlainInstr = Leaf "i64.clz"
-  encodeWatSexp I64Ctz_PlainInstr = Leaf "i64.ctz"
-  encodeWatSexp I64Popcnt_PlainInstr = Leaf "i64.popcnt"
-  encodeWatSexp I64Extend8S_PlainInstr = Leaf "i64.extend8_s"
-  encodeWatSexp I64Extend16S_PlainInstr = Leaf "i64.extend16_s"
-  encodeWatSexp I64Extend32S_PlainInstr = Leaf "i64.extend32_s"
-  encodeWatSexp I64Add_PlainInstr = Leaf "i64.add"
-  encodeWatSexp I64Sub_PlainInstr = Leaf "i64.sub"
-  encodeWatSexp I64Mul_PlainInstr = Leaf "i64.mul"
-  encodeWatSexp I64DivS_PlainInstr = Leaf "i64.div_s"
-  encodeWatSexp I64DivU_PlainInstr = Leaf "i64.div_u"
-  encodeWatSexp I64RemS_PlainInstr = Leaf "i64.rem_s"
-  encodeWatSexp I64RemU_PlainInstr = Leaf "i64.rem_u"
-  encodeWatSexp I64And_PlainInstr = Leaf "i64.and"
-  encodeWatSexp I64Or_PlainInstr = Leaf "i64.or"
-  encodeWatSexp I64Xor_PlainInstr = Leaf "i64.xor"
-  encodeWatSexp I64Shl_PlainInstr = Leaf "i64.shl"
-  encodeWatSexp I64ShrS_PlainInstr = Leaf "i64.shr_s"
-  encodeWatSexp I64ShrU_PlainInstr = Leaf "i64.shr_u"
-  encodeWatSexp I64Rotl_PlainInstr = Leaf "i64.rotl"
-  encodeWatSexp I64Rotr_PlainInstr = Leaf "i64.rotr"
-  encodeWatSexp F32Eq_PlainInstr = Leaf "f32.eq"
-  encodeWatSexp F32Ne_PlainInstr = Leaf "f32.ne"
-  encodeWatSexp F32Lt_PlainInstr = Leaf "f32.lt"
-  encodeWatSexp F32Gt_PlainInstr = Leaf "f32.gt"
-  encodeWatSexp F32Le_PlainInstr = Leaf "f32.le"
-  encodeWatSexp F32Ge_PlainInstr = Leaf "f32.ge"
-  encodeWatSexp F32Abs_PlainInstr = Leaf "f32.abs"
-  encodeWatSexp F32Neg_PlainInstr = Leaf "f32.neg"
-  encodeWatSexp F32Sqrt_PlainInstr = Leaf "f32.sqrt"
-  encodeWatSexp F32Ceil_PlainInstr = Leaf "f32.ceil"
-  encodeWatSexp F32Floor_PlainInstr = Leaf "f32.floor"
-  encodeWatSexp F32Trunc_PlainInstr = Leaf "f32.trunc"
-  encodeWatSexp F32Nearest_PlainInstr = Leaf "f32.nearest"
-  encodeWatSexp F32Add_PlainInstr = Leaf "f32.add"
-  encodeWatSexp F32Sub_PlainInstr = Leaf "f32.sub"
-  encodeWatSexp F32Mul_PlainInstr = Leaf "f32.mul"
-  encodeWatSexp F32Div_PlainInstr = Leaf "f32.div"
-  encodeWatSexp F32Min_PlainInstr = Leaf "f32.min"
-  encodeWatSexp F32Max_PlainInstr = Leaf "f32.max"
-  encodeWatSexp F32Copysign_PlainInstr = Leaf "f32.copysign"
-  encodeWatSexp F64Eq_PlainInstr = Leaf "f64.eq"
-  encodeWatSexp F64Ne_PlainInstr = Leaf "f64.ne"
-  encodeWatSexp F64Lt_PlainInstr = Leaf "f64.lt"
-  encodeWatSexp F64Gt_PlainInstr = Leaf "f64.gt"
-  encodeWatSexp F64Le_PlainInstr = Leaf "f64.le"
-  encodeWatSexp F64Ge_PlainInstr = Leaf "f64.ge"
-  encodeWatSexp F64Abs_PlainInstr = Leaf "f64.abs"
-  encodeWatSexp F64Neg_PlainInstr = Leaf "f64.neg"
-  encodeWatSexp F64Sqrt_PlainInstr = Leaf "f64.sqrt"
-  encodeWatSexp F64Ceil_PlainInstr = Leaf "f64.ceil"
-  encodeWatSexp F64Floor_PlainInstr = Leaf "f64.floor"
-  encodeWatSexp F64Trunc_PlainInstr = Leaf "f64.trunc"
-  encodeWatSexp F64Nearest_PlainInstr = Leaf "f64.nearest"
-  encodeWatSexp F64Add_PlainInstr = Leaf "f64.add"
-  encodeWatSexp F64Sub_PlainInstr = Leaf "f64.sub"
-  encodeWatSexp F64Mul_PlainInstr = Leaf "f64.mul"
-  encodeWatSexp F64Div_PlainInstr = Leaf "f64.div"
-  encodeWatSexp F64Min_PlainInstr = Leaf "f64.min"
-  encodeWatSexp F64Max_PlainInstr = Leaf "f64.max"
-  encodeWatSexp F64Copysign_PlainInstr = Leaf "f64.copysign"
-  encodeWatSexp I32WrapI64_PlainInstr = Leaf "i32.wrap_i64"
-  encodeWatSexp I32TruncF32S_PlainInstr = Leaf "i32.trunc_f32_s"
-  encodeWatSexp I32TruncF32U_PlainInstr = Leaf "i32.trunc_f32_u"
-  encodeWatSexp I32TruncF64S_PlainInstr = Leaf "i32.trunc_f64_s"
-  encodeWatSexp I32TruncF64U_PlainInstr = Leaf "i32.trunc_f64_u"
-  encodeWatSexp I32TruncSatF32S_PlainInstr = Leaf "i32.trunc_sat_f32_s"
-  encodeWatSexp I32TruncSatF32U_PlainInstr = Leaf "i32.trunc_sat_f32_u"
-  encodeWatSexp I32TruncSatF64S_PlainInstr = Leaf "i32.trunc_sat_f64_s"
-  encodeWatSexp I32TruncSatF64U_PlainInstr = Leaf "i32.trunc_sat_f64_u"
-  encodeWatSexp I64ExtendI32S_PlainInstr = Leaf "i64.extend_i32_s"
-  encodeWatSexp I64ExtendI32U_PlainInstr = Leaf "i64.extend_i32_u"
-  encodeWatSexp I64TruncF32S_PlainInstr = Leaf "i64.trunc_f32_s"
-  encodeWatSexp I64TruncF32U_PlainInstr = Leaf "i64.trunc_f32_u"
-  encodeWatSexp I64TruncF64S_PlainInstr = Leaf "i64.trunc_f64_s"
-  encodeWatSexp I64TruncF64U_PlainInstr = Leaf "i64.trunc_f64_u"
-  encodeWatSexp I64TruncSatF32S_PlainInstr = Leaf "i64.trunc_sat_f32_s"
-  encodeWatSexp I64TruncSatF32U_PlainInstr = Leaf "i64.trunc_sat_f32_u"
-  encodeWatSexp I64TruncSatF64S_PlainInstr = Leaf "i64.trunc_sat_f64_s"
-  encodeWatSexp I64TruncSatF64U_PlainInstr = Leaf "i64.trunc_sat_f64_u"
-  encodeWatSexp F32DemoteF64_PlainInstr = Leaf "f32.demote_f64"
-  encodeWatSexp F32ConvertI32S_PlainInstr = Leaf "f32.convert_i32_s"
-  encodeWatSexp F32ConvertI32U_PlainInstr = Leaf "f32.convert_i32_u"
-  encodeWatSexp F32ConvertI64S_PlainInstr = Leaf "f32.convert_i64_s"
-  encodeWatSexp F32ConvertI64U_PlainInstr = Leaf "f32.convert_i64_u"
-  encodeWatSexp F64PromoteF32_PlainInstr = Leaf "f64.promote_f32"
-  encodeWatSexp F64ConvertI32S_PlainInstr = Leaf "f64.convert_i32_s"
-  encodeWatSexp F64ConvertI32U_PlainInstr = Leaf "f64.convert_i32_u"
-  encodeWatSexp F64ConvertI64S_PlainInstr = Leaf "f64.convert_i64_s"
-  encodeWatSexp F64ConvertI64U_PlainInstr = Leaf "f64.convert_i64_u"
-  encodeWatSexp I32ReinterpretF32_PlainInstr = Leaf "i32.reinterpret_f32"
-  encodeWatSexp I64ReinterpretF64_PlainInstr = Leaf "i64.reinterpret_f64"
-  encodeWatSexp F32ReinterpretI32_PlainInstr = Leaf "f32.reinterpret_i32"
-  encodeWatSexp F64ReinterpretI64_PlainInstr = Leaf "f64.reinterpret_i64"
-  encodeWatSexp I8x16Swizzle_PlainInstr = Leaf "i8x16.swizzle"
-  encodeWatSexp I8x16RelaxedSwizzle_PlainInstr = Leaf "i8x16.relaxed_swizzle"
-  encodeWatSexp I8x16Splat_PlainInstr = Leaf "i8x16.splat"
-  encodeWatSexp I16x8Splat_PlainInstr = Leaf "i16x8.splat"
-  encodeWatSexp I32x4Splat_PlainInstr = Leaf "i32x4.splat"
-  encodeWatSexp I64x2Splat_PlainInstr = Leaf "i64x2.splat"
-  encodeWatSexp F32x4Splat_PlainInstr = Leaf "f32x4.splat"
-  encodeWatSexp F64x2Splat_PlainInstr = Leaf "f64x2.splat"
-  encodeWatSexp V128AnyTrue_PlainInstr = Leaf "v128.any_true"
-  encodeWatSexp V128Not_PlainInstr = Leaf "v128.not"
-  encodeWatSexp V128And_PlainInstr = Leaf "v128.and"
-  encodeWatSexp V128Andnot_PlainInstr = Leaf "v128.andnot"
-  encodeWatSexp V128Or_PlainInstr = Leaf "v128.or"
-  encodeWatSexp V128Xor_PlainInstr = Leaf "v128.xor"
-  encodeWatSexp V128Bitselect_PlainInstr = Leaf "v128.bitselect"
-  encodeWatSexp I8x16AllTrue_PlainInstr = Leaf "i8x16.all_true"
-  encodeWatSexp I8x16Eq_PlainInstr = Leaf "i8x16.eq"
-  encodeWatSexp I8x16Ne_PlainInstr = Leaf "i8x16.ne"
-  encodeWatSexp I8x16LtS_PlainInstr = Leaf "i8x16.lt_s"
-  encodeWatSexp I8x16LtU_PlainInstr = Leaf "i8x16.lt_u"
-  encodeWatSexp I8x16GtS_PlainInstr = Leaf "i8x16.gt_s"
-  encodeWatSexp I8x16GtU_PlainInstr = Leaf "i8x16.gt_u"
-  encodeWatSexp I8x16LeS_PlainInstr = Leaf "i8x16.le_s"
-  encodeWatSexp I8x16LeU_PlainInstr = Leaf "i8x16.le_u"
-  encodeWatSexp I8x16GeS_PlainInstr = Leaf "i8x16.ge_s"
-  encodeWatSexp I8x16GeU_PlainInstr = Leaf "i8x16.ge_u"
-  encodeWatSexp I8x16Abs_PlainInstr = Leaf "i8x16.abs"
-  encodeWatSexp I8x16Neg_PlainInstr = Leaf "i8x16.neg"
-  encodeWatSexp I8x16Popcnt_PlainInstr = Leaf "i8x16.popcnt"
-  encodeWatSexp I8x16Add_PlainInstr = Leaf "i8x16.add"
-  encodeWatSexp I8x16AddSatS_PlainInstr = Leaf "i8x16.add_sat_s"
-  encodeWatSexp I8x16AddSatU_PlainInstr = Leaf "i8x16.add_sat_u"
-  encodeWatSexp I8x16Sub_PlainInstr = Leaf "i8x16.sub"
-  encodeWatSexp I8x16SubSatS_PlainInstr = Leaf "i8x16.sub_sat_s"
-  encodeWatSexp I8x16SubSatU_PlainInstr = Leaf "i8x16.sub_sat_u"
-  encodeWatSexp I8x16MinS_PlainInstr = Leaf "i8x16.min_s"
-  encodeWatSexp I8x16MinU_PlainInstr = Leaf "i8x16.min_u"
-  encodeWatSexp I8x16MaxS_PlainInstr = Leaf "i8x16.max_s"
-  encodeWatSexp I8x16MaxU_PlainInstr = Leaf "i8x16.max_u"
-  encodeWatSexp I8x16AvgrU_PlainInstr = Leaf "i8x16.avgr_u"
-  encodeWatSexp I8x16RelaxedLaneselect_PlainInstr = Leaf "i8x16.relaxed_laneselect"
-  encodeWatSexp I8x16Shl_PlainInstr = Leaf "i8x16.shl"
-  encodeWatSexp I8x16ShrS_PlainInstr = Leaf "i8x16.shr_s"
-  encodeWatSexp I8x16ShrU_PlainInstr = Leaf "i8x16.shr_u"
-  encodeWatSexp I8x16Bitmask_PlainInstr = Leaf "i8x16.bitmask"
-  encodeWatSexp I8x16NarrowI16x8S_PlainInstr = Leaf "i8x16.narrow_i16x8_s"
-  encodeWatSexp I8x16NarrowI16x8U_PlainInstr = Leaf "i8x16.narrow_i16x8_u"
-  encodeWatSexp I16x8AllTrue_PlainInstr = Leaf "i16x8.all_true"
-  encodeWatSexp I16x8Eq_PlainInstr = Leaf "i16x8.eq"
-  encodeWatSexp I16x8Ne_PlainInstr = Leaf "i16x8.ne"
-  encodeWatSexp I16x8LtS_PlainInstr = Leaf "i16x8.lt_s"
-  encodeWatSexp I16x8LtU_PlainInstr = Leaf "i16x8.lt_u"
-  encodeWatSexp I16x8GtS_PlainInstr = Leaf "i16x8.gt_s"
-  encodeWatSexp I16x8GtU_PlainInstr = Leaf "i16x8.gt_u"
-  encodeWatSexp I16x8LeS_PlainInstr = Leaf "i16x8.le_s"
-  encodeWatSexp I16x8LeU_PlainInstr = Leaf "i16x8.le_u"
-  encodeWatSexp I16x8GeS_PlainInstr = Leaf "i16x8.ge_s"
-  encodeWatSexp I16x8GeU_PlainInstr = Leaf "i16x8.ge_u"
-  encodeWatSexp I16x8Abs_PlainInstr = Leaf "i16x8.abs"
-  encodeWatSexp I16x8Neg_PlainInstr = Leaf "i16x8.neg"
-  encodeWatSexp I16x8Add_PlainInstr = Leaf "i16x8.add"
-  encodeWatSexp I16x8AddSatS_PlainInstr = Leaf "i16x8.add_sat_s"
-  encodeWatSexp I16x8AddSatU_PlainInstr = Leaf "i16x8.add_sat_u"
-  encodeWatSexp I16x8Sub_PlainInstr = Leaf "i16x8.sub"
-  encodeWatSexp I16x8SubSatS_PlainInstr = Leaf "i16x8.sub_sat_s"
-  encodeWatSexp I16x8SubSatU_PlainInstr = Leaf "i16x8.sub_sat_u"
-  encodeWatSexp I16x8Mul_PlainInstr = Leaf "i16x8.mul"
-  encodeWatSexp I16x8MinS_PlainInstr = Leaf "i16x8.min_s"
-  encodeWatSexp I16x8MinU_PlainInstr = Leaf "i16x8.min_u"
-  encodeWatSexp I16x8MaxS_PlainInstr = Leaf "i16x8.max_s"
-  encodeWatSexp I16x8MaxU_PlainInstr = Leaf "i16x8.max_u"
-  encodeWatSexp I16x8AvgrU_PlainInstr = Leaf "i16x8.avgr_u"
-  encodeWatSexp I16x8Q15mulrSatS_PlainInstr = Leaf "i16x8.q15mulr_sat_s"
-  encodeWatSexp I16x8RelaxedQ15mulrS_PlainInstr = Leaf "i16x8.relaxed_q15mulr_s"
-  encodeWatSexp I16x8RelaxedLaneselect_PlainInstr = Leaf "i16x8.relaxed_laneselect"
-  encodeWatSexp I16x8Shl_PlainInstr = Leaf "i16x8.shl"
-  encodeWatSexp I16x8ShrS_PlainInstr = Leaf "i16x8.shr_s"
-  encodeWatSexp I16x8ShrU_PlainInstr = Leaf "i16x8.shr_u"
-  encodeWatSexp I16x8Bitmask_PlainInstr = Leaf "i16x8.bitmask"
-  encodeWatSexp I16x8NarrowI32x4S_PlainInstr = Leaf "i16x8.narrow_i32x4_s"
-  encodeWatSexp I16x8NarrowI32x4U_PlainInstr = Leaf "i16x8.narrow_i32x4_u"
-  encodeWatSexp I32x4AllTrue_PlainInstr = Leaf "i32x4.all_true"
-  encodeWatSexp I32x4Eq_PlainInstr = Leaf "i32x4.eq"
-  encodeWatSexp I32x4Ne_PlainInstr = Leaf "i32x4.ne"
-  encodeWatSexp I32x4LtS_PlainInstr = Leaf "i32x4.lt_s"
-  encodeWatSexp I32x4LtU_PlainInstr = Leaf "i32x4.lt_u"
-  encodeWatSexp I32x4GtS_PlainInstr = Leaf "i32x4.gt_s"
-  encodeWatSexp I32x4GtU_PlainInstr = Leaf "i32x4.gt_u"
-  encodeWatSexp I32x4LeS_PlainInstr = Leaf "i32x4.le_s"
-  encodeWatSexp I32x4LeU_PlainInstr = Leaf "i32x4.le_u"
-  encodeWatSexp I32x4GeS_PlainInstr = Leaf "i32x4.ge_s"
-  encodeWatSexp I32x4GeU_PlainInstr = Leaf "i32x4.ge_u"
-  encodeWatSexp I32x4Abs_PlainInstr = Leaf "i32x4.abs"
-  encodeWatSexp I32x4Neg_PlainInstr = Leaf "i32x4.neg"
-  encodeWatSexp I32x4Add_PlainInstr = Leaf "i32x4.add"
-  encodeWatSexp I32x4Sub_PlainInstr = Leaf "i32x4.sub"
-  encodeWatSexp I32x4Mul_PlainInstr = Leaf "i32x4.mul"
-  encodeWatSexp I32x4MinS_PlainInstr = Leaf "i32x4.min_s"
-  encodeWatSexp I32x4MinU_PlainInstr = Leaf "i32x4.min_u"
-  encodeWatSexp I32x4MaxS_PlainInstr = Leaf "i32x4.max_s"
-  encodeWatSexp I32x4MaxU_PlainInstr = Leaf "i32x4.max_u"
-  encodeWatSexp I32x4RelaxedLaneselect_PlainInstr = Leaf "i32x4.relaxed_laneselect"
-  encodeWatSexp I32x4Shl_PlainInstr = Leaf "i32x4.shl"
-  encodeWatSexp I32x4ShrS_PlainInstr = Leaf "i32x4.shr_s"
-  encodeWatSexp I32x4ShrU_PlainInstr = Leaf "i32x4.shr_u"
-  encodeWatSexp I32x4Bitmask_PlainInstr = Leaf "i32x4.bitmask"
-  encodeWatSexp I64x2AllTrue_PlainInstr = Leaf "i64x2.all_true"
-  encodeWatSexp I64x2Eq_PlainInstr = Leaf "i64x2.eq"
-  encodeWatSexp I64x2Ne_PlainInstr = Leaf "i64x2.ne"
-  encodeWatSexp I64x2LtS_PlainInstr = Leaf "i64x2.lt_s"
-  encodeWatSexp I64x2GtS_PlainInstr = Leaf "i64x2.gt_s"
-  encodeWatSexp I64x2LeS_PlainInstr = Leaf "i64x2.le_s"
-  encodeWatSexp I64x2GeS_PlainInstr = Leaf "i64x2.ge_s"
-  encodeWatSexp I64x2Abs_PlainInstr = Leaf "i64x2.abs"
-  encodeWatSexp I64x2Neg_PlainInstr = Leaf "i64x2.neg"
-  encodeWatSexp I64x2Add_PlainInstr = Leaf "i64x2.add"
-  encodeWatSexp I64x2Sub_PlainInstr = Leaf "i64x2.sub"
-  encodeWatSexp I64x2Mul_PlainInstr = Leaf "i64x2.mul"
-  encodeWatSexp I64x2RelaxedLaneselect_PlainInstr = Leaf "i64x2.relaxed_laneselect"
-  encodeWatSexp I64x2Shl_PlainInstr = Leaf "i64x2.shl"
-  encodeWatSexp I64x2ShrS_PlainInstr = Leaf "i64x2.shr_s"
-  encodeWatSexp I64x2ShrU_PlainInstr = Leaf "i64x2.shr_u"
-  encodeWatSexp I64x2Bitmask_PlainInstr = Leaf "i64x2.bitmask"
-  encodeWatSexp F32x4Eq_PlainInstr = Leaf "f32x4.eq"
-  encodeWatSexp F32x4Ne_PlainInstr = Leaf "f32x4.ne"
-  encodeWatSexp F32x4Lt_PlainInstr = Leaf "f32x4.lt"
-  encodeWatSexp F32x4Gt_PlainInstr = Leaf "f32x4.gt"
-  encodeWatSexp F32x4Le_PlainInstr = Leaf "f32x4.le"
-  encodeWatSexp F32x4Ge_PlainInstr = Leaf "f32x4.ge"
-  encodeWatSexp F32x4Abs_PlainInstr = Leaf "f32x4.abs"
-  encodeWatSexp F32x4Neg_PlainInstr = Leaf "f32x4.neg"
-  encodeWatSexp F32x4Sqrt_PlainInstr = Leaf "f32x4.sqrt"
-  encodeWatSexp F32x4Ceil_PlainInstr = Leaf "f32x4.ceil"
-  encodeWatSexp F32x4Floor_PlainInstr = Leaf "f32x4.floor"
-  encodeWatSexp F32x4Trunc_PlainInstr = Leaf "f32x4.trunc"
-  encodeWatSexp F32x4Nearest_PlainInstr = Leaf "f32x4.nearest"
-  encodeWatSexp F32x4Add_PlainInstr = Leaf "f32x4.add"
-  encodeWatSexp F32x4Sub_PlainInstr = Leaf "f32x4.sub"
-  encodeWatSexp F32x4Mul_PlainInstr = Leaf "f32x4.mul"
-  encodeWatSexp F32x4Div_PlainInstr = Leaf "f32x4.div"
-  encodeWatSexp F32x4Min_PlainInstr = Leaf "f32x4.min"
-  encodeWatSexp F32x4Max_PlainInstr = Leaf "f32x4.max"
-  encodeWatSexp F32x4Pmin_PlainInstr = Leaf "f32x4.pmin"
-  encodeWatSexp F32x4Pmax_PlainInstr = Leaf "f32x4.pmax"
-  encodeWatSexp F32x4RelaxedMin_PlainInstr = Leaf "f32x4.relaxed_min"
-  encodeWatSexp F32x4RelaxedMax_PlainInstr = Leaf "f32x4.relaxed_max"
-  encodeWatSexp F32x4RelaxedMadd_PlainInstr = Leaf "f32x4.relaxed_madd"
-  encodeWatSexp F32x4RelaxedNmadd_PlainInstr = Leaf "f32x4.relaxed_nmadd"
-  encodeWatSexp F64x2Eq_PlainInstr = Leaf "f64x2.eq"
-  encodeWatSexp F64x2Ne_PlainInstr = Leaf "f64x2.ne"
-  encodeWatSexp F64x2Lt_PlainInstr = Leaf "f64x2.lt"
-  encodeWatSexp F64x2Gt_PlainInstr = Leaf "f64x2.gt"
-  encodeWatSexp F64x2Le_PlainInstr = Leaf "f64x2.le"
-  encodeWatSexp F64x2Ge_PlainInstr = Leaf "f64x2.ge"
-  encodeWatSexp F64x2Abs_PlainInstr = Leaf "f64x2.abs"
-  encodeWatSexp F64x2Neg_PlainInstr = Leaf "f64x2.neg"
-  encodeWatSexp F64x2Sqrt_PlainInstr = Leaf "f64x2.sqrt"
-  encodeWatSexp F64x2Ceil_PlainInstr = Leaf "f64x2.ceil"
-  encodeWatSexp F64x2Floor_PlainInstr = Leaf "f64x2.floor"
-  encodeWatSexp F64x2Trunc_PlainInstr = Leaf "f64x2.trunc"
-  encodeWatSexp F64x2Nearest_PlainInstr = Leaf "f64x2.nearest"
-  encodeWatSexp F64x2Add_PlainInstr = Leaf "f64x2.add"
-  encodeWatSexp F64x2Sub_PlainInstr = Leaf "f64x2.sub"
-  encodeWatSexp F64x2Mul_PlainInstr = Leaf "f64x2.mul"
-  encodeWatSexp F64x2Div_PlainInstr = Leaf "f64x2.div"
-  encodeWatSexp F64x2Min_PlainInstr = Leaf "f64x2.min"
-  encodeWatSexp F64x2Max_PlainInstr = Leaf "f64x2.max"
-  encodeWatSexp F64x2Pmin_PlainInstr = Leaf "f64x2.pmin"
-  encodeWatSexp F64x2Pmax_PlainInstr = Leaf "f64x2.pmax"
-  encodeWatSexp F64x2RelaxedMin_PlainInstr = Leaf "f64x2.relaxed_min"
-  encodeWatSexp F64x2RelaxedMax_PlainInstr = Leaf "f64x2.relaxed_max"
-  encodeWatSexp F64x2RelaxedMadd_PlainInstr = Leaf "f64x2.relaxed_madd"
-  encodeWatSexp F64x2RelaxedNmadd_PlainInstr = Leaf "f64x2.relaxed_nmadd"
-  encodeWatSexp I16x8ExtendLowI8x16S_PlainInstr = Leaf "i16x8.extend_low_i8x16_s"
-  encodeWatSexp I16x8ExtendLowI8x16U_PlainInstr = Leaf "i16x8.extend_low_i8x16_u"
-  encodeWatSexp I16x8ExtendHighI8x16S_PlainInstr = Leaf "i16x8.extend_high_i8x16_s"
-  encodeWatSexp I16x8ExtendHighI8x16U_PlainInstr = Leaf "i16x8.extend_high_i8x16_u"
-  encodeWatSexp I32x4ExtendLowI16x8S_PlainInstr = Leaf "i32x4.extend_low_i16x8_s"
-  encodeWatSexp I32x4ExtendLowI16x8U_PlainInstr = Leaf "i32x4.extend_low_i16x8_u"
-  encodeWatSexp I32x4ExtendHighI16x8S_PlainInstr = Leaf "i32x4.extend_high_i16x8_s"
-  encodeWatSexp I32x4ExtendHighI16x8U_PlainInstr = Leaf "i32x4.extend_high_i16x8_u"
-  encodeWatSexp I32x4TruncSatF32x4S_PlainInstr = Leaf "i32x4.trunc_sat_f32x4_s"
-  encodeWatSexp I32x4TruncSatF32x4U_PlainInstr = Leaf "i32x4.trunc_sat_f32x4_u"
-  encodeWatSexp I32x4TruncSatF64x2SZero_PlainInstr = Leaf "i32x4.trunc_sat_f64x2_s_zero"
-  encodeWatSexp I32x4TruncSatF64x2UZero_PlainInstr = Leaf "i32x4.trunc_sat_f64x2_u_zero"
-  encodeWatSexp I32x4RelaxedTruncF32x4S_PlainInstr = Leaf "i32x4.relaxed_trunc_f32x4_s"
-  encodeWatSexp I32x4RelaxedTruncF32x4U_PlainInstr = Leaf "i32x4.relaxed_trunc_f32x4_u"
-  encodeWatSexp I32x4RelaxedTruncF64x2SZero_PlainInstr = Leaf "i32x4.relaxed_trunc_f64x2_s_zero"
-  encodeWatSexp I32x4RelaxedTruncF64x2UZero_PlainInstr = Leaf "i32x4.relaxed_trunc_f64x2_u_zero"
-  encodeWatSexp I64x2ExtendLowI32x4S_PlainInstr = Leaf "i64x2.extend_low_i32x4_s"
-  encodeWatSexp I64x2ExtendLowI32x4U_PlainInstr = Leaf "i64x2.extend_low_i32x4_u"
-  encodeWatSexp I64x2ExtendHighI32x4S_PlainInstr = Leaf "i64x2.extend_high_i32x4_s"
-  encodeWatSexp I64x2ExtendHighI32x4U_PlainInstr = Leaf "i64x2.extend_high_i32x4_u"
-  encodeWatSexp F32x4DemoteF64x2Zero_PlainInstr = Leaf "f32x4.demote_f64x2_zero"
-  encodeWatSexp F32x4ConvertI32x4S_PlainInstr = Leaf "f32x4.convert_i32x4_s"
-  encodeWatSexp F32x4ConvertI32x4U_PlainInstr = Leaf "f32x4.convert_i32x4_u"
-  encodeWatSexp F64x2PromoteLowF32x4_PlainInstr = Leaf "f64x2.promote_low_f32x4"
-  encodeWatSexp F64x2ConvertLowI32x4S_PlainInstr = Leaf "f64x2.convert_low_i32x4_s"
-  encodeWatSexp F64x2ConvertLowI32x4U_PlainInstr = Leaf "f64x2.convert_low_i32x4_u"
-  encodeWatSexp I16x8ExtaddPairwiseI8x16S_PlainInstr = Leaf "i16x8.extadd_pairwise_i8x16_s"
-  encodeWatSexp I16x8ExtaddPairwiseI8x16U_PlainInstr = Leaf "i16x8.extadd_pairwise_i8x16_u"
-  encodeWatSexp I16x8ExtmulLowI8x16S_PlainInstr = Leaf "i16x8.extmul_low_i8x16_s"
-  encodeWatSexp I16x8ExtmulLowI8x16U_PlainInstr = Leaf "i16x8.extmul_low_i8x16_u"
-  encodeWatSexp I16x8ExtmulHighI8x16S_PlainInstr = Leaf "i16x8.extmul_high_i8x16_s"
-  encodeWatSexp I16x8ExtmulHighI8x16U_PlainInstr = Leaf "i16x8.extmul_high_i8x16_u"
-  encodeWatSexp I16x8RelaxedDotI8x16I7x16S_PlainInstr = Leaf "i16x8.relaxed_dot_i8x16_i7x16_s"
-  encodeWatSexp I32x4ExtaddPairwiseI16x8S_PlainInstr = Leaf "i32x4.extadd_pairwise_i16x8_s"
-  encodeWatSexp I32x4ExtaddPairwiseI16x8U_PlainInstr = Leaf "i32x4.extadd_pairwise_i16x8_u"
-  encodeWatSexp I32x4ExtmulLowI16x8S_PlainInstr = Leaf "i32x4.extmul_low_i16x8_s"
-  encodeWatSexp I32x4ExtmulLowI16x8U_PlainInstr = Leaf "i32x4.extmul_low_i16x8_u"
-  encodeWatSexp I32x4ExtmulHighI16x8S_PlainInstr = Leaf "i32x4.extmul_high_i16x8_s"
-  encodeWatSexp I32x4ExtmulHighI16x8U_PlainInstr = Leaf "i32x4.extmul_high_i16x8_u"
-  encodeWatSexp I32x4DotI16x8S_PlainInstr = Leaf "i32x4.dot_i16x8_s"
-  encodeWatSexp I32x4RelaxedDotI8x16I7x16AddS_PlainInstr = Leaf "i32x4.relaxed_dot_i8x16_i7x16_add_s"
-  encodeWatSexp I64x2ExtmulLowI32x4S_PlainInstr = Leaf "i64x2.extmul_low_i32x4_s"
-  encodeWatSexp I64x2ExtmulLowI32x4U_PlainInstr = Leaf "i64x2.extmul_low_i32x4_u"
-  encodeWatSexp I64x2ExtmulHighI32x4S_PlainInstr = Leaf "i64x2.extmul_high_i32x4_s"
-  encodeWatSexp I64x2ExtmulHighI32x4U_PlainInstr = Leaf "i64x2.extmul_high_i32x4_u"
+  encodeWat Unreachable_PlainInstr = Leaf "unreachable"
+  encodeWat Nop_PlainInstr = Leaf "nop"
+  encodeWat Drop_PlainInstr = Leaf "drop"
+  encodeWat (Select_PlainInstr rsM) = Node "select" (foldMap (fmap encodeWat) rsM)
+  encodeWat (Br_PlainInstr l) = Node "br" [encodeWat l]
+  encodeWat (BrIf_PlainInstr l) = Node "br_if" [encodeWat l]
+  encodeWat (BrTable_PlainInstr ls l) = Node "br_table" (fmap encodeWat ls <> [encodeWat l])
+  encodeWat Return_PlainInstr = Leaf "return"
+  encodeWat (Call_PlainInstr f) = Node "call" [encodeWat f]
+  encodeWat (ReturnCall_PlainInstr f) = Node "return_call" [encodeWat f]
+  encodeWat (CallIndirect_PlainInstr t tu) = Node "call_indirect" [encodeWat t, encodeWat tu]
+  encodeWat (ReturnCallIndirect_PlainInstr t tu) = Node "return_call_indirect" [encodeWat t, encodeWat tu]
+  encodeWat (LocalGet_PlainInstr l) = Node "local.get" [encodeWat l]
+  encodeWat (LocalSet_PlainInstr l) = Node "local.set" [encodeWat l]
+  encodeWat (LocalTee_PlainInstr l) = Node "local.tee" [encodeWat l]
+  encodeWat (GlobalGet_PlainInstr g) = Node "global.get" [encodeWat g]
+  encodeWat (GlobalSet_PlainInstr g) = Node "global.set" [encodeWat g]
+  encodeWat (TableGet_PlainInstr t) = Node "table.get" [encodeWat t]
+  encodeWat (TableSet_PlainInstr t) = Node "table.set" [encodeWat t]
+  encodeWat (TableSize_PlainInstr t) = Node "table.size" [encodeWat t]
+  encodeWat (TableGrow_PlainInstr t) = Node "table.grow" [encodeWat t]
+  encodeWat (TableFill_PlainInstr t) = Node "table.fill" [encodeWat t]
+  encodeWat (TableCopy_PlainInstr t1 t2) = Node "table.copy" [encodeWat t1, encodeWat t2]
+  encodeWat (TableInit_PlainInstr t e) = Node "table.init" [encodeWat t, encodeWat e]
+  encodeWat (ElemDrop_PlainInstr e) = Node "elem.drop" [encodeWat e]
+  encodeWat (I32Load_PlainInstr m arg) = encMemSexp "i32.load" m arg
+  encodeWat (I64Load_PlainInstr m arg) = encMemSexp "i64.load" m arg
+  encodeWat (F32Load_PlainInstr m arg) = encMemSexp "f32.load" m arg
+  encodeWat (F64Load_PlainInstr m arg) = encMemSexp "f64.load" m arg
+  encodeWat (I32Load8S_PlainInstr m arg) = encMemSexp "i32.load8_s" m arg
+  encodeWat (I32Load8U_PlainInstr m arg) = encMemSexp "i32.load8_u" m arg
+  encodeWat (I32Load16S_PlainInstr m arg) = encMemSexp "i32.load16_s" m arg
+  encodeWat (I32Load16U_PlainInstr m arg) = encMemSexp "i32.load16_u" m arg
+  encodeWat (I64Load8S_PlainInstr m arg) = encMemSexp "i64.load8_s" m arg
+  encodeWat (I64Load8U_PlainInstr m arg) = encMemSexp "i64.load8_u" m arg
+  encodeWat (I64Load16S_PlainInstr m arg) = encMemSexp "i64.load16_s" m arg
+  encodeWat (I64Load16U_PlainInstr m arg) = encMemSexp "i64.load16_u" m arg
+  encodeWat (I64Load32S_PlainInstr m arg) = encMemSexp "i64.load32_s" m arg
+  encodeWat (I64Load32U_PlainInstr m arg) = encMemSexp "i64.load32_u" m arg
+  encodeWat (V128Load_PlainInstr m arg) = encMemSexp "v128.load" m arg
+  encodeWat (V128Load8x8S_PlainInstr m arg) = encMemSexp "v128.load8x8_s" m arg
+  encodeWat (V128Load8x8U_PlainInstr m arg) = encMemSexp "v128.load8x8_u" m arg
+  encodeWat (V128Load16x4S_PlainInstr m arg) = encMemSexp "v128.load16x4_s" m arg
+  encodeWat (V128Load16x4U_PlainInstr m arg) = encMemSexp "v128.load16x4_u" m arg
+  encodeWat (V128Load32x2S_PlainInstr m arg) = encMemSexp "v128.load32x2_s" m arg
+  encodeWat (V128Load32x2U_PlainInstr m arg) = encMemSexp "v128.load32x2_u" m arg
+  encodeWat (V128Load8Splat_PlainInstr m arg) = encMemSexp "v128.load8_splat" m arg
+  encodeWat (V128Load16Splat_PlainInstr m arg) = encMemSexp "v128.load16_splat" m arg
+  encodeWat (V128Load32Splat_PlainInstr m arg) = encMemSexp "v128.load32_splat" m arg
+  encodeWat (V128Load64Splat_PlainInstr m arg) = encMemSexp "v128.load64_splat" m arg
+  encodeWat (V128Load32Zero_PlainInstr m arg) = encMemSexp "v128.load32_zero" m arg
+  encodeWat (V128Load64Zero_PlainInstr m arg) = encMemSexp "v128.load64_zero" m arg
+  encodeWat (V128Load8Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.load8_lane" m arg lane
+  encodeWat (V128Load16Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.load16_lane" m arg lane
+  encodeWat (V128Load32Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.load32_lane" m arg lane
+  encodeWat (V128Load64Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.load64_lane" m arg lane
+  encodeWat (I32Store_PlainInstr m arg) = encMemSexp "i32.store" m arg
+  encodeWat (I64Store_PlainInstr m arg) = encMemSexp "i64.store" m arg
+  encodeWat (F32Store_PlainInstr m arg) = encMemSexp "f32.store" m arg
+  encodeWat (F64Store_PlainInstr m arg) = encMemSexp "f64.store" m arg
+  encodeWat (I32Store8_PlainInstr m arg) = encMemSexp "i32.store8" m arg
+  encodeWat (I32Store16_PlainInstr m arg) = encMemSexp "i32.store16" m arg
+  encodeWat (I64Store8_PlainInstr m arg) = encMemSexp "i64.store8" m arg
+  encodeWat (I64Store16_PlainInstr m arg) = encMemSexp "i64.store16" m arg
+  encodeWat (I64Store32_PlainInstr m arg) = encMemSexp "i64.store32" m arg
+  encodeWat (V128Store_PlainInstr m arg) = encMemSexp "v128.store" m arg
+  encodeWat (V128Store8Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.store8_lane" m arg lane
+  encodeWat (V128Store16Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.store16_lane" m arg lane
+  encodeWat (V128Store32Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.store32_lane" m arg lane
+  encodeWat (V128Store64Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.store64_lane" m arg lane
+  encodeWat (MemorySize_PlainInstr m) = Node "memory.size" [encodeWat m]
+  encodeWat (MemoryGrow_PlainInstr m) = Node "memory.grow" [encodeWat m]
+  encodeWat (MemoryFill_PlainInstr m) = Node "memory.fill" [encodeWat m]
+  encodeWat (MemoryCopy_PlainInstr m1 m2) = Node "memory.copy" [encodeWat m1, encodeWat m2]
+  encodeWat (MemoryInit_PlainInstr m d) = Node "memory.init" [encodeWat m, encodeWat d]
+  encodeWat (DataDrop_PlainInstr d) = Node "data.drop" [encodeWat d]
+  encodeWat (RefNull_PlainInstr ht) = Node "ref.null" [encodeWat ht]
+  encodeWat (RefFunc_PlainInstr f) = Node "ref.func" [encodeWat f]
+  encodeWat RefIsNull_PlainInstr = Leaf "ref.is_null"
+  encodeWat RefAsNonNull_PlainInstr = Leaf "ref.as_non_null"
+  encodeWat RefEq_PlainInstr = Leaf "ref.eq"
+  encodeWat (RefTest_PlainInstr rt) = Node "ref.test" [encodeWat rt]
+  encodeWat (RefCast_PlainInstr rt) = Node "ref.cast" [encodeWat rt]
+  encodeWat RefI31_PlainInstr = Leaf "ref.i31"
+  encodeWat I31GetS_PlainInstr = Leaf "i31.get_s"
+  encodeWat I31GetU_PlainInstr = Leaf "i31.get_u"
+  encodeWat (StructNew_PlainInstr t) = Node "struct.new" [encodeWat t]
+  encodeWat (StructNewDefault_PlainInstr t) = Node "struct.new_default" [encodeWat t]
+  encodeWat (StructGet_PlainInstr t f) = Node "struct.get" [encodeWat t, encodeWat f]
+  encodeWat (StructGetS_PlainInstr t f) = Node "struct.get_s" [encodeWat t, encodeWat f]
+  encodeWat (StructGetU_PlainInstr t f) = Node "struct.get_u" [encodeWat t, encodeWat f]
+  encodeWat (StructSet_PlainInstr t f) = Node "struct.set" [encodeWat t, encodeWat f]
+  encodeWat (ArrayNew_PlainInstr t) = Node "array.new" [encodeWat t]
+  encodeWat (ArrayNewDefault_PlainInstr t) = Node "array.new_default" [encodeWat t]
+  encodeWat (ArrayNewFixed_PlainInstr t n) = Node "array.new_fixed" [encodeWat t, encodeWat n]
+  encodeWat (ArrayNewData_PlainInstr t d) = Node "array.new_data" [encodeWat t, encodeWat d]
+  encodeWat (ArrayNewElem_PlainInstr t e) = Node "array.new_elem" [encodeWat t, encodeWat e]
+  encodeWat (ArrayGet_PlainInstr t) = Node "array.get" [encodeWat t]
+  encodeWat (ArrayGetS_PlainInstr t) = Node "array.get_s" [encodeWat t]
+  encodeWat (ArrayGetU_PlainInstr t) = Node "array.get_u" [encodeWat t]
+  encodeWat (ArraySet_PlainInstr t) = Node "array.set" [encodeWat t]
+  encodeWat ArrayLen_PlainInstr = Leaf "array.len"
+  encodeWat (ArrayFill_PlainInstr t) = Node "array.fill" [encodeWat t]
+  encodeWat (ArrayCopy_PlainInstr t1 t2) = Node "array.copy" [encodeWat t1, encodeWat t2]
+  encodeWat (ArrayInitData_PlainInstr t d) = Node "array.init_data" [encodeWat t, encodeWat d]
+  encodeWat (ArrayInitElem_PlainInstr t e) = Node "array.init_elem" [encodeWat t, encodeWat e]
+  encodeWat AnyConvertExtern_PlainInstr = Leaf "any.convert_extern"
+  encodeWat ExternConvertAny_PlainInstr = Leaf "extern.convert_any"
+  encodeWat (I32Const_PlainInstr c) = Node "i32.const" [encodeWat c]
+  encodeWat (I64Const_PlainInstr c) = Node "i64.const" [encodeWat c]
+  encodeWat (F32Const_PlainInstr c) = Node "f32.const" [encodeWat c]
+  encodeWat (F64Const_PlainInstr c) = Node "f64.const" [encodeWat c]
+  encodeWat (V128Const_PlainInstr shape cs) = Node "v128.const" (Leaf shape : fmap encodeWat cs)
+  encodeWat (I8x16Shuffle_PlainInstr lanes) = Node "i8x16.shuffle" (fmap encodeWat lanes)
+  encodeWat (I8x16ExtractLaneS_PlainInstr lane) = Node "i8x16.extract_lane_s" [encodeWat lane]
+  encodeWat (I8x16ExtractLaneU_PlainInstr lane) = Node "i8x16.extract_lane_u" [encodeWat lane]
+  encodeWat (I16x8ExtractLaneS_PlainInstr lane) = Node "i16x8.extract_lane_s" [encodeWat lane]
+  encodeWat (I16x8ExtractLaneU_PlainInstr lane) = Node "i16x8.extract_lane_u" [encodeWat lane]
+  encodeWat (I32x4ExtractLane_PlainInstr lane) = Node "i32x4.extract_lane" [encodeWat lane]
+  encodeWat (I64x2ExtractLane_PlainInstr lane) = Node "i64x2.extract_lane" [encodeWat lane]
+  encodeWat (F32x4ExtractLane_PlainInstr lane) = Node "f32x4.extract_lane" [encodeWat lane]
+  encodeWat (F64x2ExtractLane_PlainInstr lane) = Node "f64x2.extract_lane" [encodeWat lane]
+  encodeWat (I8x16ReplaceLane_PlainInstr lane) = Node "i8x16.replace_lane" [encodeWat lane]
+  encodeWat (I16x8ReplaceLane_PlainInstr lane) = Node "i16x8.replace_lane" [encodeWat lane]
+  encodeWat (I32x4ReplaceLane_PlainInstr lane) = Node "i32x4.replace_lane" [encodeWat lane]
+  encodeWat (I64x2ReplaceLane_PlainInstr lane) = Node "i64x2.replace_lane" [encodeWat lane]
+  encodeWat (F32x4ReplaceLane_PlainInstr lane) = Node "f32x4.replace_lane" [encodeWat lane]
+  encodeWat (F64x2ReplaceLane_PlainInstr lane) = Node "f64x2.replace_lane" [encodeWat lane]
+  encodeWat I32Eqz_PlainInstr = Leaf "i32.eqz"
+  encodeWat I32Eq_PlainInstr = Leaf "i32.eq"
+  encodeWat I32Ne_PlainInstr = Leaf "i32.ne"
+  encodeWat I32LtS_PlainInstr = Leaf "i32.lt_s"
+  encodeWat I32LtU_PlainInstr = Leaf "i32.lt_u"
+  encodeWat I32GtS_PlainInstr = Leaf "i32.gt_s"
+  encodeWat I32GtU_PlainInstr = Leaf "i32.gt_u"
+  encodeWat I32LeS_PlainInstr = Leaf "i32.le_s"
+  encodeWat I32LeU_PlainInstr = Leaf "i32.le_u"
+  encodeWat I32GeS_PlainInstr = Leaf "i32.ge_s"
+  encodeWat I32GeU_PlainInstr = Leaf "i32.ge_u"
+  encodeWat I32Clz_PlainInstr = Leaf "i32.clz"
+  encodeWat I32Ctz_PlainInstr = Leaf "i32.ctz"
+  encodeWat I32Popcnt_PlainInstr = Leaf "i32.popcnt"
+  encodeWat I32Extend8S_PlainInstr = Leaf "i32.extend8_s"
+  encodeWat I32Extend16S_PlainInstr = Leaf "i32.extend16_s"
+  encodeWat I32Add_PlainInstr = Leaf "i32.add"
+  encodeWat I32Sub_PlainInstr = Leaf "i32.sub"
+  encodeWat I32Mul_PlainInstr = Leaf "i32.mul"
+  encodeWat I32DivS_PlainInstr = Leaf "i32.div_s"
+  encodeWat I32DivU_PlainInstr = Leaf "i32.div_u"
+  encodeWat I32RemS_PlainInstr = Leaf "i32.rem_s"
+  encodeWat I32RemU_PlainInstr = Leaf "i32.rem_u"
+  encodeWat I32And_PlainInstr = Leaf "i32.and"
+  encodeWat I32Or_PlainInstr = Leaf "i32.or"
+  encodeWat I32Xor_PlainInstr = Leaf "i32.xor"
+  encodeWat I32Shl_PlainInstr = Leaf "i32.shl"
+  encodeWat I32ShrS_PlainInstr = Leaf "i32.shr_s"
+  encodeWat I32ShrU_PlainInstr = Leaf "i32.shr_u"
+  encodeWat I32Rotl_PlainInstr = Leaf "i32.rotl"
+  encodeWat I32Rotr_PlainInstr = Leaf "i32.rotr"
+  encodeWat I64Eqz_PlainInstr = Leaf "i64.eqz"
+  encodeWat I64Eq_PlainInstr = Leaf "i64.eq"
+  encodeWat I64Ne_PlainInstr = Leaf "i64.ne"
+  encodeWat I64LtS_PlainInstr = Leaf "i64.lt_s"
+  encodeWat I64LtU_PlainInstr = Leaf "i64.lt_u"
+  encodeWat I64GtS_PlainInstr = Leaf "i64.gt_s"
+  encodeWat I64GtU_PlainInstr = Leaf "i64.gt_u"
+  encodeWat I64LeS_PlainInstr = Leaf "i64.le_s"
+  encodeWat I64LeU_PlainInstr = Leaf "i64.le_u"
+  encodeWat I64GeS_PlainInstr = Leaf "i64.ge_s"
+  encodeWat I64GeU_PlainInstr = Leaf "i64.ge_u"
+  encodeWat I64Clz_PlainInstr = Leaf "i64.clz"
+  encodeWat I64Ctz_PlainInstr = Leaf "i64.ctz"
+  encodeWat I64Popcnt_PlainInstr = Leaf "i64.popcnt"
+  encodeWat I64Extend8S_PlainInstr = Leaf "i64.extend8_s"
+  encodeWat I64Extend16S_PlainInstr = Leaf "i64.extend16_s"
+  encodeWat I64Extend32S_PlainInstr = Leaf "i64.extend32_s"
+  encodeWat I64Add_PlainInstr = Leaf "i64.add"
+  encodeWat I64Sub_PlainInstr = Leaf "i64.sub"
+  encodeWat I64Mul_PlainInstr = Leaf "i64.mul"
+  encodeWat I64DivS_PlainInstr = Leaf "i64.div_s"
+  encodeWat I64DivU_PlainInstr = Leaf "i64.div_u"
+  encodeWat I64RemS_PlainInstr = Leaf "i64.rem_s"
+  encodeWat I64RemU_PlainInstr = Leaf "i64.rem_u"
+  encodeWat I64And_PlainInstr = Leaf "i64.and"
+  encodeWat I64Or_PlainInstr = Leaf "i64.or"
+  encodeWat I64Xor_PlainInstr = Leaf "i64.xor"
+  encodeWat I64Shl_PlainInstr = Leaf "i64.shl"
+  encodeWat I64ShrS_PlainInstr = Leaf "i64.shr_s"
+  encodeWat I64ShrU_PlainInstr = Leaf "i64.shr_u"
+  encodeWat I64Rotl_PlainInstr = Leaf "i64.rotl"
+  encodeWat I64Rotr_PlainInstr = Leaf "i64.rotr"
+  encodeWat F32Eq_PlainInstr = Leaf "f32.eq"
+  encodeWat F32Ne_PlainInstr = Leaf "f32.ne"
+  encodeWat F32Lt_PlainInstr = Leaf "f32.lt"
+  encodeWat F32Gt_PlainInstr = Leaf "f32.gt"
+  encodeWat F32Le_PlainInstr = Leaf "f32.le"
+  encodeWat F32Ge_PlainInstr = Leaf "f32.ge"
+  encodeWat F32Abs_PlainInstr = Leaf "f32.abs"
+  encodeWat F32Neg_PlainInstr = Leaf "f32.neg"
+  encodeWat F32Sqrt_PlainInstr = Leaf "f32.sqrt"
+  encodeWat F32Ceil_PlainInstr = Leaf "f32.ceil"
+  encodeWat F32Floor_PlainInstr = Leaf "f32.floor"
+  encodeWat F32Trunc_PlainInstr = Leaf "f32.trunc"
+  encodeWat F32Nearest_PlainInstr = Leaf "f32.nearest"
+  encodeWat F32Add_PlainInstr = Leaf "f32.add"
+  encodeWat F32Sub_PlainInstr = Leaf "f32.sub"
+  encodeWat F32Mul_PlainInstr = Leaf "f32.mul"
+  encodeWat F32Div_PlainInstr = Leaf "f32.div"
+  encodeWat F32Min_PlainInstr = Leaf "f32.min"
+  encodeWat F32Max_PlainInstr = Leaf "f32.max"
+  encodeWat F32Copysign_PlainInstr = Leaf "f32.copysign"
+  encodeWat F64Eq_PlainInstr = Leaf "f64.eq"
+  encodeWat F64Ne_PlainInstr = Leaf "f64.ne"
+  encodeWat F64Lt_PlainInstr = Leaf "f64.lt"
+  encodeWat F64Gt_PlainInstr = Leaf "f64.gt"
+  encodeWat F64Le_PlainInstr = Leaf "f64.le"
+  encodeWat F64Ge_PlainInstr = Leaf "f64.ge"
+  encodeWat F64Abs_PlainInstr = Leaf "f64.abs"
+  encodeWat F64Neg_PlainInstr = Leaf "f64.neg"
+  encodeWat F64Sqrt_PlainInstr = Leaf "f64.sqrt"
+  encodeWat F64Ceil_PlainInstr = Leaf "f64.ceil"
+  encodeWat F64Floor_PlainInstr = Leaf "f64.floor"
+  encodeWat F64Trunc_PlainInstr = Leaf "f64.trunc"
+  encodeWat F64Nearest_PlainInstr = Leaf "f64.nearest"
+  encodeWat F64Add_PlainInstr = Leaf "f64.add"
+  encodeWat F64Sub_PlainInstr = Leaf "f64.sub"
+  encodeWat F64Mul_PlainInstr = Leaf "f64.mul"
+  encodeWat F64Div_PlainInstr = Leaf "f64.div"
+  encodeWat F64Min_PlainInstr = Leaf "f64.min"
+  encodeWat F64Max_PlainInstr = Leaf "f64.max"
+  encodeWat F64Copysign_PlainInstr = Leaf "f64.copysign"
+  encodeWat I32WrapI64_PlainInstr = Leaf "i32.wrap_i64"
+  encodeWat I32TruncF32S_PlainInstr = Leaf "i32.trunc_f32_s"
+  encodeWat I32TruncF32U_PlainInstr = Leaf "i32.trunc_f32_u"
+  encodeWat I32TruncF64S_PlainInstr = Leaf "i32.trunc_f64_s"
+  encodeWat I32TruncF64U_PlainInstr = Leaf "i32.trunc_f64_u"
+  encodeWat I32TruncSatF32S_PlainInstr = Leaf "i32.trunc_sat_f32_s"
+  encodeWat I32TruncSatF32U_PlainInstr = Leaf "i32.trunc_sat_f32_u"
+  encodeWat I32TruncSatF64S_PlainInstr = Leaf "i32.trunc_sat_f64_s"
+  encodeWat I32TruncSatF64U_PlainInstr = Leaf "i32.trunc_sat_f64_u"
+  encodeWat I64ExtendI32S_PlainInstr = Leaf "i64.extend_i32_s"
+  encodeWat I64ExtendI32U_PlainInstr = Leaf "i64.extend_i32_u"
+  encodeWat I64TruncF32S_PlainInstr = Leaf "i64.trunc_f32_s"
+  encodeWat I64TruncF32U_PlainInstr = Leaf "i64.trunc_f32_u"
+  encodeWat I64TruncF64S_PlainInstr = Leaf "i64.trunc_f64_s"
+  encodeWat I64TruncF64U_PlainInstr = Leaf "i64.trunc_f64_u"
+  encodeWat I64TruncSatF32S_PlainInstr = Leaf "i64.trunc_sat_f32_s"
+  encodeWat I64TruncSatF32U_PlainInstr = Leaf "i64.trunc_sat_f32_u"
+  encodeWat I64TruncSatF64S_PlainInstr = Leaf "i64.trunc_sat_f64_s"
+  encodeWat I64TruncSatF64U_PlainInstr = Leaf "i64.trunc_sat_f64_u"
+  encodeWat F32DemoteF64_PlainInstr = Leaf "f32.demote_f64"
+  encodeWat F32ConvertI32S_PlainInstr = Leaf "f32.convert_i32_s"
+  encodeWat F32ConvertI32U_PlainInstr = Leaf "f32.convert_i32_u"
+  encodeWat F32ConvertI64S_PlainInstr = Leaf "f32.convert_i64_s"
+  encodeWat F32ConvertI64U_PlainInstr = Leaf "f32.convert_i64_u"
+  encodeWat F64PromoteF32_PlainInstr = Leaf "f64.promote_f32"
+  encodeWat F64ConvertI32S_PlainInstr = Leaf "f64.convert_i32_s"
+  encodeWat F64ConvertI32U_PlainInstr = Leaf "f64.convert_i32_u"
+  encodeWat F64ConvertI64S_PlainInstr = Leaf "f64.convert_i64_s"
+  encodeWat F64ConvertI64U_PlainInstr = Leaf "f64.convert_i64_u"
+  encodeWat I32ReinterpretF32_PlainInstr = Leaf "i32.reinterpret_f32"
+  encodeWat I64ReinterpretF64_PlainInstr = Leaf "i64.reinterpret_f64"
+  encodeWat F32ReinterpretI32_PlainInstr = Leaf "f32.reinterpret_i32"
+  encodeWat F64ReinterpretI64_PlainInstr = Leaf "f64.reinterpret_i64"
+  encodeWat I8x16Swizzle_PlainInstr = Leaf "i8x16.swizzle"
+  encodeWat I8x16RelaxedSwizzle_PlainInstr = Leaf "i8x16.relaxed_swizzle"
+  encodeWat I8x16Splat_PlainInstr = Leaf "i8x16.splat"
+  encodeWat I16x8Splat_PlainInstr = Leaf "i16x8.splat"
+  encodeWat I32x4Splat_PlainInstr = Leaf "i32x4.splat"
+  encodeWat I64x2Splat_PlainInstr = Leaf "i64x2.splat"
+  encodeWat F32x4Splat_PlainInstr = Leaf "f32x4.splat"
+  encodeWat F64x2Splat_PlainInstr = Leaf "f64x2.splat"
+  encodeWat V128AnyTrue_PlainInstr = Leaf "v128.any_true"
+  encodeWat V128Not_PlainInstr = Leaf "v128.not"
+  encodeWat V128And_PlainInstr = Leaf "v128.and"
+  encodeWat V128Andnot_PlainInstr = Leaf "v128.andnot"
+  encodeWat V128Or_PlainInstr = Leaf "v128.or"
+  encodeWat V128Xor_PlainInstr = Leaf "v128.xor"
+  encodeWat V128Bitselect_PlainInstr = Leaf "v128.bitselect"
+  encodeWat I8x16AllTrue_PlainInstr = Leaf "i8x16.all_true"
+  encodeWat I8x16Eq_PlainInstr = Leaf "i8x16.eq"
+  encodeWat I8x16Ne_PlainInstr = Leaf "i8x16.ne"
+  encodeWat I8x16LtS_PlainInstr = Leaf "i8x16.lt_s"
+  encodeWat I8x16LtU_PlainInstr = Leaf "i8x16.lt_u"
+  encodeWat I8x16GtS_PlainInstr = Leaf "i8x16.gt_s"
+  encodeWat I8x16GtU_PlainInstr = Leaf "i8x16.gt_u"
+  encodeWat I8x16LeS_PlainInstr = Leaf "i8x16.le_s"
+  encodeWat I8x16LeU_PlainInstr = Leaf "i8x16.le_u"
+  encodeWat I8x16GeS_PlainInstr = Leaf "i8x16.ge_s"
+  encodeWat I8x16GeU_PlainInstr = Leaf "i8x16.ge_u"
+  encodeWat I8x16Abs_PlainInstr = Leaf "i8x16.abs"
+  encodeWat I8x16Neg_PlainInstr = Leaf "i8x16.neg"
+  encodeWat I8x16Popcnt_PlainInstr = Leaf "i8x16.popcnt"
+  encodeWat I8x16Add_PlainInstr = Leaf "i8x16.add"
+  encodeWat I8x16AddSatS_PlainInstr = Leaf "i8x16.add_sat_s"
+  encodeWat I8x16AddSatU_PlainInstr = Leaf "i8x16.add_sat_u"
+  encodeWat I8x16Sub_PlainInstr = Leaf "i8x16.sub"
+  encodeWat I8x16SubSatS_PlainInstr = Leaf "i8x16.sub_sat_s"
+  encodeWat I8x16SubSatU_PlainInstr = Leaf "i8x16.sub_sat_u"
+  encodeWat I8x16MinS_PlainInstr = Leaf "i8x16.min_s"
+  encodeWat I8x16MinU_PlainInstr = Leaf "i8x16.min_u"
+  encodeWat I8x16MaxS_PlainInstr = Leaf "i8x16.max_s"
+  encodeWat I8x16MaxU_PlainInstr = Leaf "i8x16.max_u"
+  encodeWat I8x16AvgrU_PlainInstr = Leaf "i8x16.avgr_u"
+  encodeWat I8x16RelaxedLaneselect_PlainInstr = Leaf "i8x16.relaxed_laneselect"
+  encodeWat I8x16Shl_PlainInstr = Leaf "i8x16.shl"
+  encodeWat I8x16ShrS_PlainInstr = Leaf "i8x16.shr_s"
+  encodeWat I8x16ShrU_PlainInstr = Leaf "i8x16.shr_u"
+  encodeWat I8x16Bitmask_PlainInstr = Leaf "i8x16.bitmask"
+  encodeWat I8x16NarrowI16x8S_PlainInstr = Leaf "i8x16.narrow_i16x8_s"
+  encodeWat I8x16NarrowI16x8U_PlainInstr = Leaf "i8x16.narrow_i16x8_u"
+  encodeWat I16x8AllTrue_PlainInstr = Leaf "i16x8.all_true"
+  encodeWat I16x8Eq_PlainInstr = Leaf "i16x8.eq"
+  encodeWat I16x8Ne_PlainInstr = Leaf "i16x8.ne"
+  encodeWat I16x8LtS_PlainInstr = Leaf "i16x8.lt_s"
+  encodeWat I16x8LtU_PlainInstr = Leaf "i16x8.lt_u"
+  encodeWat I16x8GtS_PlainInstr = Leaf "i16x8.gt_s"
+  encodeWat I16x8GtU_PlainInstr = Leaf "i16x8.gt_u"
+  encodeWat I16x8LeS_PlainInstr = Leaf "i16x8.le_s"
+  encodeWat I16x8LeU_PlainInstr = Leaf "i16x8.le_u"
+  encodeWat I16x8GeS_PlainInstr = Leaf "i16x8.ge_s"
+  encodeWat I16x8GeU_PlainInstr = Leaf "i16x8.ge_u"
+  encodeWat I16x8Abs_PlainInstr = Leaf "i16x8.abs"
+  encodeWat I16x8Neg_PlainInstr = Leaf "i16x8.neg"
+  encodeWat I16x8Add_PlainInstr = Leaf "i16x8.add"
+  encodeWat I16x8AddSatS_PlainInstr = Leaf "i16x8.add_sat_s"
+  encodeWat I16x8AddSatU_PlainInstr = Leaf "i16x8.add_sat_u"
+  encodeWat I16x8Sub_PlainInstr = Leaf "i16x8.sub"
+  encodeWat I16x8SubSatS_PlainInstr = Leaf "i16x8.sub_sat_s"
+  encodeWat I16x8SubSatU_PlainInstr = Leaf "i16x8.sub_sat_u"
+  encodeWat I16x8Mul_PlainInstr = Leaf "i16x8.mul"
+  encodeWat I16x8MinS_PlainInstr = Leaf "i16x8.min_s"
+  encodeWat I16x8MinU_PlainInstr = Leaf "i16x8.min_u"
+  encodeWat I16x8MaxS_PlainInstr = Leaf "i16x8.max_s"
+  encodeWat I16x8MaxU_PlainInstr = Leaf "i16x8.max_u"
+  encodeWat I16x8AvgrU_PlainInstr = Leaf "i16x8.avgr_u"
+  encodeWat I16x8Q15mulrSatS_PlainInstr = Leaf "i16x8.q15mulr_sat_s"
+  encodeWat I16x8RelaxedQ15mulrS_PlainInstr = Leaf "i16x8.relaxed_q15mulr_s"
+  encodeWat I16x8RelaxedLaneselect_PlainInstr = Leaf "i16x8.relaxed_laneselect"
+  encodeWat I16x8Shl_PlainInstr = Leaf "i16x8.shl"
+  encodeWat I16x8ShrS_PlainInstr = Leaf "i16x8.shr_s"
+  encodeWat I16x8ShrU_PlainInstr = Leaf "i16x8.shr_u"
+  encodeWat I16x8Bitmask_PlainInstr = Leaf "i16x8.bitmask"
+  encodeWat I16x8NarrowI32x4S_PlainInstr = Leaf "i16x8.narrow_i32x4_s"
+  encodeWat I16x8NarrowI32x4U_PlainInstr = Leaf "i16x8.narrow_i32x4_u"
+  encodeWat I32x4AllTrue_PlainInstr = Leaf "i32x4.all_true"
+  encodeWat I32x4Eq_PlainInstr = Leaf "i32x4.eq"
+  encodeWat I32x4Ne_PlainInstr = Leaf "i32x4.ne"
+  encodeWat I32x4LtS_PlainInstr = Leaf "i32x4.lt_s"
+  encodeWat I32x4LtU_PlainInstr = Leaf "i32x4.lt_u"
+  encodeWat I32x4GtS_PlainInstr = Leaf "i32x4.gt_s"
+  encodeWat I32x4GtU_PlainInstr = Leaf "i32x4.gt_u"
+  encodeWat I32x4LeS_PlainInstr = Leaf "i32x4.le_s"
+  encodeWat I32x4LeU_PlainInstr = Leaf "i32x4.le_u"
+  encodeWat I32x4GeS_PlainInstr = Leaf "i32x4.ge_s"
+  encodeWat I32x4GeU_PlainInstr = Leaf "i32x4.ge_u"
+  encodeWat I32x4Abs_PlainInstr = Leaf "i32x4.abs"
+  encodeWat I32x4Neg_PlainInstr = Leaf "i32x4.neg"
+  encodeWat I32x4Add_PlainInstr = Leaf "i32x4.add"
+  encodeWat I32x4Sub_PlainInstr = Leaf "i32x4.sub"
+  encodeWat I32x4Mul_PlainInstr = Leaf "i32x4.mul"
+  encodeWat I32x4MinS_PlainInstr = Leaf "i32x4.min_s"
+  encodeWat I32x4MinU_PlainInstr = Leaf "i32x4.min_u"
+  encodeWat I32x4MaxS_PlainInstr = Leaf "i32x4.max_s"
+  encodeWat I32x4MaxU_PlainInstr = Leaf "i32x4.max_u"
+  encodeWat I32x4RelaxedLaneselect_PlainInstr = Leaf "i32x4.relaxed_laneselect"
+  encodeWat I32x4Shl_PlainInstr = Leaf "i32x4.shl"
+  encodeWat I32x4ShrS_PlainInstr = Leaf "i32x4.shr_s"
+  encodeWat I32x4ShrU_PlainInstr = Leaf "i32x4.shr_u"
+  encodeWat I32x4Bitmask_PlainInstr = Leaf "i32x4.bitmask"
+  encodeWat I64x2AllTrue_PlainInstr = Leaf "i64x2.all_true"
+  encodeWat I64x2Eq_PlainInstr = Leaf "i64x2.eq"
+  encodeWat I64x2Ne_PlainInstr = Leaf "i64x2.ne"
+  encodeWat I64x2LtS_PlainInstr = Leaf "i64x2.lt_s"
+  encodeWat I64x2GtS_PlainInstr = Leaf "i64x2.gt_s"
+  encodeWat I64x2LeS_PlainInstr = Leaf "i64x2.le_s"
+  encodeWat I64x2GeS_PlainInstr = Leaf "i64x2.ge_s"
+  encodeWat I64x2Abs_PlainInstr = Leaf "i64x2.abs"
+  encodeWat I64x2Neg_PlainInstr = Leaf "i64x2.neg"
+  encodeWat I64x2Add_PlainInstr = Leaf "i64x2.add"
+  encodeWat I64x2Sub_PlainInstr = Leaf "i64x2.sub"
+  encodeWat I64x2Mul_PlainInstr = Leaf "i64x2.mul"
+  encodeWat I64x2RelaxedLaneselect_PlainInstr = Leaf "i64x2.relaxed_laneselect"
+  encodeWat I64x2Shl_PlainInstr = Leaf "i64x2.shl"
+  encodeWat I64x2ShrS_PlainInstr = Leaf "i64x2.shr_s"
+  encodeWat I64x2ShrU_PlainInstr = Leaf "i64x2.shr_u"
+  encodeWat I64x2Bitmask_PlainInstr = Leaf "i64x2.bitmask"
+  encodeWat F32x4Eq_PlainInstr = Leaf "f32x4.eq"
+  encodeWat F32x4Ne_PlainInstr = Leaf "f32x4.ne"
+  encodeWat F32x4Lt_PlainInstr = Leaf "f32x4.lt"
+  encodeWat F32x4Gt_PlainInstr = Leaf "f32x4.gt"
+  encodeWat F32x4Le_PlainInstr = Leaf "f32x4.le"
+  encodeWat F32x4Ge_PlainInstr = Leaf "f32x4.ge"
+  encodeWat F32x4Abs_PlainInstr = Leaf "f32x4.abs"
+  encodeWat F32x4Neg_PlainInstr = Leaf "f32x4.neg"
+  encodeWat F32x4Sqrt_PlainInstr = Leaf "f32x4.sqrt"
+  encodeWat F32x4Ceil_PlainInstr = Leaf "f32x4.ceil"
+  encodeWat F32x4Floor_PlainInstr = Leaf "f32x4.floor"
+  encodeWat F32x4Trunc_PlainInstr = Leaf "f32x4.trunc"
+  encodeWat F32x4Nearest_PlainInstr = Leaf "f32x4.nearest"
+  encodeWat F32x4Add_PlainInstr = Leaf "f32x4.add"
+  encodeWat F32x4Sub_PlainInstr = Leaf "f32x4.sub"
+  encodeWat F32x4Mul_PlainInstr = Leaf "f32x4.mul"
+  encodeWat F32x4Div_PlainInstr = Leaf "f32x4.div"
+  encodeWat F32x4Min_PlainInstr = Leaf "f32x4.min"
+  encodeWat F32x4Max_PlainInstr = Leaf "f32x4.max"
+  encodeWat F32x4Pmin_PlainInstr = Leaf "f32x4.pmin"
+  encodeWat F32x4Pmax_PlainInstr = Leaf "f32x4.pmax"
+  encodeWat F32x4RelaxedMin_PlainInstr = Leaf "f32x4.relaxed_min"
+  encodeWat F32x4RelaxedMax_PlainInstr = Leaf "f32x4.relaxed_max"
+  encodeWat F32x4RelaxedMadd_PlainInstr = Leaf "f32x4.relaxed_madd"
+  encodeWat F32x4RelaxedNmadd_PlainInstr = Leaf "f32x4.relaxed_nmadd"
+  encodeWat F64x2Eq_PlainInstr = Leaf "f64x2.eq"
+  encodeWat F64x2Ne_PlainInstr = Leaf "f64x2.ne"
+  encodeWat F64x2Lt_PlainInstr = Leaf "f64x2.lt"
+  encodeWat F64x2Gt_PlainInstr = Leaf "f64x2.gt"
+  encodeWat F64x2Le_PlainInstr = Leaf "f64x2.le"
+  encodeWat F64x2Ge_PlainInstr = Leaf "f64x2.ge"
+  encodeWat F64x2Abs_PlainInstr = Leaf "f64x2.abs"
+  encodeWat F64x2Neg_PlainInstr = Leaf "f64x2.neg"
+  encodeWat F64x2Sqrt_PlainInstr = Leaf "f64x2.sqrt"
+  encodeWat F64x2Ceil_PlainInstr = Leaf "f64x2.ceil"
+  encodeWat F64x2Floor_PlainInstr = Leaf "f64x2.floor"
+  encodeWat F64x2Trunc_PlainInstr = Leaf "f64x2.trunc"
+  encodeWat F64x2Nearest_PlainInstr = Leaf "f64x2.nearest"
+  encodeWat F64x2Add_PlainInstr = Leaf "f64x2.add"
+  encodeWat F64x2Sub_PlainInstr = Leaf "f64x2.sub"
+  encodeWat F64x2Mul_PlainInstr = Leaf "f64x2.mul"
+  encodeWat F64x2Div_PlainInstr = Leaf "f64x2.div"
+  encodeWat F64x2Min_PlainInstr = Leaf "f64x2.min"
+  encodeWat F64x2Max_PlainInstr = Leaf "f64x2.max"
+  encodeWat F64x2Pmin_PlainInstr = Leaf "f64x2.pmin"
+  encodeWat F64x2Pmax_PlainInstr = Leaf "f64x2.pmax"
+  encodeWat F64x2RelaxedMin_PlainInstr = Leaf "f64x2.relaxed_min"
+  encodeWat F64x2RelaxedMax_PlainInstr = Leaf "f64x2.relaxed_max"
+  encodeWat F64x2RelaxedMadd_PlainInstr = Leaf "f64x2.relaxed_madd"
+  encodeWat F64x2RelaxedNmadd_PlainInstr = Leaf "f64x2.relaxed_nmadd"
+  encodeWat I16x8ExtendLowI8x16S_PlainInstr = Leaf "i16x8.extend_low_i8x16_s"
+  encodeWat I16x8ExtendLowI8x16U_PlainInstr = Leaf "i16x8.extend_low_i8x16_u"
+  encodeWat I16x8ExtendHighI8x16S_PlainInstr = Leaf "i16x8.extend_high_i8x16_s"
+  encodeWat I16x8ExtendHighI8x16U_PlainInstr = Leaf "i16x8.extend_high_i8x16_u"
+  encodeWat I32x4ExtendLowI16x8S_PlainInstr = Leaf "i32x4.extend_low_i16x8_s"
+  encodeWat I32x4ExtendLowI16x8U_PlainInstr = Leaf "i32x4.extend_low_i16x8_u"
+  encodeWat I32x4ExtendHighI16x8S_PlainInstr = Leaf "i32x4.extend_high_i16x8_s"
+  encodeWat I32x4ExtendHighI16x8U_PlainInstr = Leaf "i32x4.extend_high_i16x8_u"
+  encodeWat I32x4TruncSatF32x4S_PlainInstr = Leaf "i32x4.trunc_sat_f32x4_s"
+  encodeWat I32x4TruncSatF32x4U_PlainInstr = Leaf "i32x4.trunc_sat_f32x4_u"
+  encodeWat I32x4TruncSatF64x2SZero_PlainInstr = Leaf "i32x4.trunc_sat_f64x2_s_zero"
+  encodeWat I32x4TruncSatF64x2UZero_PlainInstr = Leaf "i32x4.trunc_sat_f64x2_u_zero"
+  encodeWat I32x4RelaxedTruncF32x4S_PlainInstr = Leaf "i32x4.relaxed_trunc_f32x4_s"
+  encodeWat I32x4RelaxedTruncF32x4U_PlainInstr = Leaf "i32x4.relaxed_trunc_f32x4_u"
+  encodeWat I32x4RelaxedTruncF64x2SZero_PlainInstr = Leaf "i32x4.relaxed_trunc_f64x2_s_zero"
+  encodeWat I32x4RelaxedTruncF64x2UZero_PlainInstr = Leaf "i32x4.relaxed_trunc_f64x2_u_zero"
+  encodeWat I64x2ExtendLowI32x4S_PlainInstr = Leaf "i64x2.extend_low_i32x4_s"
+  encodeWat I64x2ExtendLowI32x4U_PlainInstr = Leaf "i64x2.extend_low_i32x4_u"
+  encodeWat I64x2ExtendHighI32x4S_PlainInstr = Leaf "i64x2.extend_high_i32x4_s"
+  encodeWat I64x2ExtendHighI32x4U_PlainInstr = Leaf "i64x2.extend_high_i32x4_u"
+  encodeWat F32x4DemoteF64x2Zero_PlainInstr = Leaf "f32x4.demote_f64x2_zero"
+  encodeWat F32x4ConvertI32x4S_PlainInstr = Leaf "f32x4.convert_i32x4_s"
+  encodeWat F32x4ConvertI32x4U_PlainInstr = Leaf "f32x4.convert_i32x4_u"
+  encodeWat F64x2PromoteLowF32x4_PlainInstr = Leaf "f64x2.promote_low_f32x4"
+  encodeWat F64x2ConvertLowI32x4S_PlainInstr = Leaf "f64x2.convert_low_i32x4_s"
+  encodeWat F64x2ConvertLowI32x4U_PlainInstr = Leaf "f64x2.convert_low_i32x4_u"
+  encodeWat I16x8ExtaddPairwiseI8x16S_PlainInstr = Leaf "i16x8.extadd_pairwise_i8x16_s"
+  encodeWat I16x8ExtaddPairwiseI8x16U_PlainInstr = Leaf "i16x8.extadd_pairwise_i8x16_u"
+  encodeWat I16x8ExtmulLowI8x16S_PlainInstr = Leaf "i16x8.extmul_low_i8x16_s"
+  encodeWat I16x8ExtmulLowI8x16U_PlainInstr = Leaf "i16x8.extmul_low_i8x16_u"
+  encodeWat I16x8ExtmulHighI8x16S_PlainInstr = Leaf "i16x8.extmul_high_i8x16_s"
+  encodeWat I16x8ExtmulHighI8x16U_PlainInstr = Leaf "i16x8.extmul_high_i8x16_u"
+  encodeWat I16x8RelaxedDotI8x16I7x16S_PlainInstr = Leaf "i16x8.relaxed_dot_i8x16_i7x16_s"
+  encodeWat I32x4ExtaddPairwiseI16x8S_PlainInstr = Leaf "i32x4.extadd_pairwise_i16x8_s"
+  encodeWat I32x4ExtaddPairwiseI16x8U_PlainInstr = Leaf "i32x4.extadd_pairwise_i16x8_u"
+  encodeWat I32x4ExtmulLowI16x8S_PlainInstr = Leaf "i32x4.extmul_low_i16x8_s"
+  encodeWat I32x4ExtmulLowI16x8U_PlainInstr = Leaf "i32x4.extmul_low_i16x8_u"
+  encodeWat I32x4ExtmulHighI16x8S_PlainInstr = Leaf "i32x4.extmul_high_i16x8_s"
+  encodeWat I32x4ExtmulHighI16x8U_PlainInstr = Leaf "i32x4.extmul_high_i16x8_u"
+  encodeWat I32x4DotI16x8S_PlainInstr = Leaf "i32x4.dot_i16x8_s"
+  encodeWat I32x4RelaxedDotI8x16I7x16AddS_PlainInstr = Leaf "i32x4.relaxed_dot_i8x16_i7x16_add_s"
+  encodeWat I64x2ExtmulLowI32x4S_PlainInstr = Leaf "i64x2.extmul_low_i32x4_s"
+  encodeWat I64x2ExtmulLowI32x4U_PlainInstr = Leaf "i64x2.extmul_low_i32x4_u"
+  encodeWat I64x2ExtmulHighI32x4S_PlainInstr = Leaf "i64x2.extmul_high_i32x4_s"
+  encodeWat I64x2ExtmulHighI32x4U_PlainInstr = Leaf "i64x2.extmul_high_i32x4_u"
 
 instance EncodeWat Instr where
-  encodeWatSexp (Plain_Instr p) = encodeWatSexp p
-  encodeWatSexp (Block_Instr bi) = encodeWatSexp bi
-  encodeWatSexp (Folded_Instr fi) = encodeWatSexp fi
+  encodeWat (Plain_Instr p) = encodeWat p
+  encodeWat (Block_Instr bi) = encodeWat bi
+  encodeWat (Folded_Instr fi) = encodeWat fi
 
 instance EncodeWatList Instrs where
-  encodeWatSexpList = instrsSexpList
+  encodeWatList = instrsSexpList
 
 instance EncodeWat FoldedInstr where
-  encodeWatSexp (Plain_FoldedInstr p inputs) =
-    let Node op kids = encodeWatSexp p
-     in Node op (kids <> fmap encodeWatSexp inputs)
-  encodeWatSexp (Block_FoldedInstr idM bt body) =
-    Node "block" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
-  encodeWatSexp (Loop_FoldedInstr idM bt body) =
-    Node "loop" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
-  encodeWatSexp (If_FoldedInstr idM bt inputs thenBody elseBody) =
-    Node "if" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp inputs <> [Node "then" (fmap encodeWatSexp thenBody)] <> [Node "else" (fmap encodeWatSexp elseBody) | not (null elseBody)]))
-  encodeWatSexp (TryTable_FoldedInstr idM bt cs body) =
-    Node "try_table" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp cs <> fmap encodeWatSexp body))
+  encodeWat (Plain_FoldedInstr p inputs) =
+    let Node op kids = encodeWat p
+     in Node op (kids <> fmap encodeWat inputs)
+  encodeWat (Block_FoldedInstr idM bt body) =
+    Node "block" (encodeWatList idM <> (blockTypeSexpList bt <> fmap encodeWat body))
+  encodeWat (Loop_FoldedInstr idM bt body) =
+    Node "loop" (encodeWatList idM <> (blockTypeSexpList bt <> fmap encodeWat body))
+  encodeWat (If_FoldedInstr idM bt inputs thenBody elseBody) =
+    Node "if" (encodeWatList idM <> (blockTypeSexpList bt <> fmap encodeWat inputs <> [Node "then" (fmap encodeWat thenBody)] <> [Node "else" (fmap encodeWat elseBody) | not (null elseBody)]))
+  encodeWat (TryTable_FoldedInstr idM bt cs body) =
+    Node "try_table" (encodeWatList idM <> (blockTypeSexpList bt <> fmap encodeWat cs <> fmap encodeWat body))
 
 instance EncodeWatList Expr where
-  encodeWatSexpList = exprSexpList
+  encodeWatList = exprSexpList
 
 instance EncodeWat Idx where
-  encodeWatSexp (Index_Idx n) = encodeWatSexp n
-  encodeWatSexp (Identifier_Idx i) = encodeWatSexp i
+  encodeWat (Index_Idx n) = encodeWat n
+  encodeWat (Identifier_Idx i) = encodeWat i
 
 instance EncodeWat TypeIdx where
-  encodeWatSexp (TypeIdx i) = encodeWatSexp i
+  encodeWat (TypeIdx i) = encodeWat i
 
 instance EncodeWat FuncIdx where
-  encodeWatSexp (FuncIdx i) = encodeWatSexp i
+  encodeWat (FuncIdx i) = encodeWat i
 
 instance EncodeWat GlobalIdx where
-  encodeWatSexp (GlobalIdx i) = encodeWatSexp i
+  encodeWat (GlobalIdx i) = encodeWat i
 
 instance EncodeWat TableIdx where
-  encodeWatSexp (TableIdx i) = encodeWatSexp i
+  encodeWat (TableIdx i) = encodeWat i
 
 instance EncodeWat MemIdx where
-  encodeWatSexp (MemIdx i) = encodeWatSexp i
+  encodeWat (MemIdx i) = encodeWat i
 
 instance EncodeWat TagIdx where
-  encodeWatSexp (TagIdx i) = encodeWatSexp i
+  encodeWat (TagIdx i) = encodeWat i
 
 instance EncodeWat ElemIdx where
-  encodeWatSexp (ElemIdx i) = encodeWatSexp i
+  encodeWat (ElemIdx i) = encodeWat i
 
 instance EncodeWat DataIdx where
-  encodeWatSexp (DataIdx i) = encodeWatSexp i
+  encodeWat (DataIdx i) = encodeWat i
 
 instance EncodeWat LabelIdx where
-  encodeWatSexp (LabelIdx i) = encodeWatSexp i
+  encodeWat (LabelIdx i) = encodeWat i
 
 instance EncodeWat LocalIdx where
-  encodeWatSexp (LocalIdx i) = encodeWatSexp i
+  encodeWat (LocalIdx i) = encodeWat i
 
 instance EncodeWat FieldIdx where
-  encodeWatSexp (FieldIdx i) = encodeWatSexp i
+  encodeWat (FieldIdx i) = encodeWat i
 
 instance EncodeWat Type where
-  encodeWatSexp (Type rt) = encodeWatSexp rt
+  encodeWat (Type rt) = encodeWat rt
 
 instance EncodeWat Tag where
-  encodeWatSexp (Tag idM tt) = Node "tag" (encodeWatSexpList idM <> [encodeWatSexp tt])
+  encodeWat (Tag idM tt) = Node "tag" (encodeWatList idM <> [encodeWat tt])
 
 instance EncodeWat Global where
-  encodeWatSexp (Global idM gt e) = Node "global" (encodeWatSexpList idM <> [encodeWatSexp gt] <> encodeWatSexpList e)
+  encodeWat (Global idM gt e) = Node "global" (encodeWatList idM <> [encodeWat gt] <> encodeWatList e)
 
 instance EncodeWat Mem where
-  encodeWatSexp (Mem idM mt) = Node "memory" (encodeWatSexpList idM <> memTypeSexpList mt)
+  encodeWat (Mem idM mt) = Node "memory" (encodeWatList idM <> memTypeSexpList mt)
 
 instance EncodeWat Table where
-  encodeWatSexp (Table idM tt e) = Node "table" (encodeWatSexpList idM <> (tableTypeSexpList tt <> encodeWatSexpList e))
+  encodeWat (Table idM tt e) = Node "table" (encodeWatList idM <> (tableTypeSexpList tt <> encodeWatList e))
 
 instance EncodeWat Local where
-  encodeWatSexp (Local idM vt) = Node "local" (encodeWatSexpList idM <> [encodeWatSexp vt])
+  encodeWat (Local idM vt) = Node "local" (encodeWatList idM <> [encodeWat vt])
 
 instance EncodeWat Func where
-  encodeWatSexp (Func idM tuM ls e) = Node "func" (encodeWatSexpList idM <> (encodeWatSexpList tuM <> fmap encodeWatSexp ls <> exprSexpList e))
+  encodeWat (Func idM tuM ls e) = Node "func" (encodeWatList idM <> (encodeWatList tuM <> fmap encodeWat ls <> exprSexpList e))
 
 instance EncodeWatList DataMode where
-  encodeWatSexpList = dataModeSexpList
+  encodeWatList = dataModeSexpList
 
 instance EncodeWat DataSegment where
-  encodeWatSexp (DataSegment idM mode bs) = Node "data" (encodeWatSexpList idM <> (dataModeSexpList mode <> [encodeWatSexp bs]))
+  encodeWat (DataSegment idM mode bs) = Node "data" (encodeWatList idM <> (dataModeSexpList mode <> [encodeWat bs]))
 
 instance EncodeWatList ElemMode where
-  encodeWatSexpList = elemModeSexpList
+  encodeWatList = elemModeSexpList
 
 instance EncodeWat ElemExpr where
-  encodeWatSexp (ElemExpr e) = Node "item" (encodeWatSexpList e)
+  encodeWat (ElemExpr e) = Node "item" (encodeWatList e)
 
 instance EncodeWatList ElemList where
-  encodeWatSexpList = elemListSexpList
+  encodeWatList = elemListSexpList
 
 instance EncodeWat ElemSegment where
-  encodeWatSexp (ElemSegment idM mode el) = Node "elem" (encodeWatSexpList idM <> (elemModeSexpList mode <> elemListSexpList el))
+  encodeWat (ElemSegment idM mode el) = Node "elem" (encodeWatList idM <> (elemModeSexpList mode <> elemListSexpList el))
 
 instance EncodeWat Start where
-  encodeWatSexp (Start f) = Node "start" [encodeWatSexp f]
+  encodeWat (Start f) = Node "start" [encodeWat f]
 
 instance EncodeWat Import where
-  encodeWatSexp (Import nm1 nm2 et) = Node "import" [encodeWatSexp nm1, encodeWatSexp nm2, encodeWatSexp et]
+  encodeWat (Import nm1 nm2 et) = Node "import" [encodeWat nm1, encodeWat nm2, encodeWat et]
 
 instance EncodeWat ExternIdx where
-  encodeWatSexp (Tag_ExternIdx x) = Node "tag" [encodeWatSexp x]
-  encodeWatSexp (Global_ExternIdx x) = Node "global" [encodeWatSexp x]
-  encodeWatSexp (Memory_ExternIdx x) = Node "memory" [encodeWatSexp x]
-  encodeWatSexp (Table_ExternIdx x) = Node "table" [encodeWatSexp x]
-  encodeWatSexp (Func_ExternIdx x) = Node "func" [encodeWatSexp x]
+  encodeWat (Tag_ExternIdx x) = Node "tag" [encodeWat x]
+  encodeWat (Global_ExternIdx x) = Node "global" [encodeWat x]
+  encodeWat (Memory_ExternIdx x) = Node "memory" [encodeWat x]
+  encodeWat (Table_ExternIdx x) = Node "table" [encodeWat x]
+  encodeWat (Func_ExternIdx x) = Node "func" [encodeWat x]
 
 instance EncodeWat Export where
-  encodeWatSexp (Export nm xx) = Node "export" [encodeWatSexp nm, encodeWatSexp xx]
+  encodeWat (Export nm xx) = Node "export" [encodeWat nm, encodeWat xx]
 
 instance EncodeWat Decl where
-  encodeWatSexp (Type_Decl t) = encodeWatSexp t
-  encodeWatSexp (Import_Decl i) = encodeWatSexp i
-  encodeWatSexp (Tag_Decl t) = encodeWatSexp t
-  encodeWatSexp (Global_Decl g) = encodeWatSexp g
-  encodeWatSexp (Mem_Decl m) = encodeWatSexp m
-  encodeWatSexp (Table_Decl t) = encodeWatSexp t
-  encodeWatSexp (Func_Decl f) = encodeWatSexp f
-  encodeWatSexp (Data_Decl d) = encodeWatSexp d
-  encodeWatSexp (Elem_Decl e) = encodeWatSexp e
-  encodeWatSexp (Start_Decl s) = encodeWatSexp s
-  encodeWatSexp (Export_Decl e) = encodeWatSexp e
+  encodeWat (Type_Decl t) = encodeWat t
+  encodeWat (Import_Decl i) = encodeWat i
+  encodeWat (Tag_Decl t) = encodeWat t
+  encodeWat (Global_Decl g) = encodeWat g
+  encodeWat (Mem_Decl m) = encodeWat m
+  encodeWat (Table_Decl t) = encodeWat t
+  encodeWat (Func_Decl f) = encodeWat f
+  encodeWat (Data_Decl d) = encodeWat d
+  encodeWat (Elem_Decl e) = encodeWat e
+  encodeWat (Start_Decl s) = encodeWat s
+  encodeWat (Export_Decl e) = encodeWat e
 
 instance EncodeWat Module where
-  encodeWatSexp (Module idM decls) = Node "module" (encodeWatSexpList idM <> fmap encodeWatSexp decls)
+  encodeWat (Module idM decls) = Node "module" (encodeWatList idM <> fmap encodeWat decls)

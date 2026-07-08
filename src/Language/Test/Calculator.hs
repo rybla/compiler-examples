@@ -2,26 +2,19 @@
 
 module Language.Test.Calculator where
 
-import Control.Monad ((<=<))
+import Control.Monad (unless, (<=<))
 import Control.Monad.Except (runExceptT)
 import Control.Monad.IO.Class (liftIO)
-import Data.Functor (($>))
 import Data.Text.Lazy qualified as LazyText
 import Data.Text.Lazy.Encoding qualified as LazyTextEncoding
-import Data.Text.Lazy.IO qualified as LazyTextIO
-import Data.Text.Lazy.Read (decimal)
+import Data.Text.Lazy.Read (decimal, signed)
 import Language.Calculator.Compilation
 import Language.Calculator.Interpretation (interpret)
 import Language.Calculator.Syntax
 import Language.Test.Common
-import Language.Wasm.Wat (EncodeWat (encodeWatSexp))
-import Prettyprinter (pretty)
-import Prettyprinter.Render.Text (renderLazy)
-import System.IO (stderr)
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (assertBool)
+import Test.Tasty.HUnit (assertFailure)
 import Test.Tasty.QuickCheck (ioProperty, testProperty)
-import Utilities (layoutUnbounded)
 
 --------------------------------
 
@@ -36,22 +29,18 @@ spec =
         ],
       testProperty "compiler-correct" $ \t -> ioProperty $ do
         outCompiled <-
-          either (fail . LazyText.unpack) pure
-            <=< runExceptT
-            $ either fail (\(i, rest) -> liftIO (assertBool ("The rest of output after parsed Int must be empty, but it was: " <> LazyText.unpack rest) (LazyText.null rest)) $> i)
-              . decimal
+          either (fail . LazyText.unpack) pure <=< runExceptT
+            $ either
+              fail
+              ( \(i, rest) -> do
+                  unless (LazyText.null rest) . liftIO $
+                    assertFailure ("The rest of output after parsed Int must be empty, but it was: " <> LazyText.unpack rest)
+                  pure i
+              )
+              . signed decimal
               . LazyText.strip
-              <=< ( \txt -> do
-                      liftIO . LazyTextIO.hPutStrLn stderr $ "Compiled module:\n\n" <> txt
-                      pure txt
-                  )
-              <=< pure . LazyTextEncoding.decodeUtf8
-              <=< interpretWatModule
-              <=< ( \m -> do
-                      liftIO . LazyTextIO.hPutStrLn stderr $ "Compiled module:\n\n" <> (renderLazy . layoutUnbounded . pretty . encodeWatSexp) m
-                      pure m
-                  )
-              <=< pure . compile
+              . LazyTextEncoding.decodeUtf8
+              <=< interpretWatModule . compile
             $ t
         let outInterpreted = interpret t
         pure $ outInterpreted == outCompiled

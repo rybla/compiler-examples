@@ -3,7 +3,7 @@ module Language.Wasm.Wat.Utilities where
 import Control.Monad.Except (ExceptT, throwError)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text.Lazy (LazyText)
-import Language.Wasm.Wat (EncodeWat (encodeWatSexp), Module)
+import Language.Wasm.Wat (EncodeWat (encodeWat), Module)
 import Prettyprinter (pretty)
 import Prettyprinter.Render.Text (renderLazy)
 import System.Exit (ExitCode (ExitFailure, ExitSuccess))
@@ -14,7 +14,7 @@ import Utilities (layoutUnbounded)
 
 formatWat :: Module -> ExceptT LazyText IO LazyText
 formatWat m = do
-  let t = renderLazy . layoutUnbounded . pretty . encodeWatSexp $ m
+  let t = renderLazy . layoutUnbounded . pretty . encodeWat $ m
   (exitCode, out, err) <- liftIO $ readProcessWithExitCode "wasm-tools" ["parse", "--wat", "-"] t
   case exitCode of
     ExitSuccess -> pure ()
@@ -23,7 +23,7 @@ formatWat m = do
 
 toWasm :: Module -> ExceptT LazyText IO LazyText
 toWasm m = do
-  let t = renderLazy . layoutUnbounded . pretty . encodeWatSexp $ m
+  let t = renderLazy . layoutUnbounded . pretty . encodeWat $ m
   (exitCode, out, err) <- liftIO $ readProcessWithExitCode "wasm-tools" ["parse", "-"] t
   case exitCode of
     ExitSuccess -> pure ()
