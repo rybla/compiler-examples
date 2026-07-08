@@ -1,7 +1,7 @@
 {- HLINT ignore "Use camelCase" -}
 
 -- | Embedding of the WebAssembly Text Format (WAT) from the WebAssembly Specification Release 3.0 (2026-07-07).
-module Language.Wat where
+module Language.Wasm.Wat where
 
 import Data.ByteString (ByteString)
 import Data.List (singleton)

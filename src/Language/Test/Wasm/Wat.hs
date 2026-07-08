@@ -1,19 +1,24 @@
 {- HLINT ignore "Redundant $" -}
 
-module Language.Test.Wat (spec) where
+module Language.Test.Wasm.Wat (spec) where
 
+import Control.Monad ((<=<))
+import Control.Monad.Except (runExceptT)
 import Data.ByteString.Lazy (LazyByteString)
+import Data.Text qualified as Text
+import Data.Text.Lazy qualified as LazyText
 import Data.Text.Lazy.Encoding (encodeUtf8)
-import Language.Wat
-import Prettyprinter (Doc, LayoutOptions (LayoutOptions), PageWidth (Unbounded), layoutPretty, pretty)
-import Prettyprinter.Render.Text (renderLazy)
+import Language.Wasm.Wat
+import Language.Wasm.Wat.Utilities (formatWat)
+import Prettyprinter (LayoutOptions (LayoutOptions), PageWidth (Unbounded), layoutPretty, pretty)
+import Prettyprinter.Render.Text (renderStrict)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.Golden (goldenVsString)
 
 spec :: TestTree
 spec =
   testGroup "Wat" $
-    [ goldenVsString "x3" "asset/golden/Wat/x3.golden.wat" . return . encodeDocUtf8 . pretty . encodeWatSexp $
+    [ goldenVsString "x1" "asset/golden/Wat/x1.golden.wat" . encodeWatSexpAsUtf8 . encodeWatSexp $
         Module
           Nothing
           [ Export_Decl $
@@ -45,5 +50,13 @@ spec =
           ]
     ]
 
-encodeDocUtf8 :: Doc ann -> LazyByteString
-encodeDocUtf8 = encodeUtf8 . renderLazy . layoutPretty (LayoutOptions Unbounded)
+encodeWatSexpAsUtf8 :: Sexp -> IO LazyByteString
+encodeWatSexpAsUtf8 =
+  either
+    (fail . ("Invalid WAT: " <>) . Text.unpack)
+    (pure . encodeUtf8 . LazyText.fromStrict)
+    <=< runExceptT
+      . formatWat
+      . renderStrict
+      . layoutPretty (LayoutOptions Unbounded)
+      . pretty

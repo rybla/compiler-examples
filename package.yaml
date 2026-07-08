@@ -39,6 +39,8 @@ dependencies:
   - parsec
   - conduit
   - aeson
+  - process
+  - temporary
   - QuickCheck
   - tasty
   - tasty-hunit

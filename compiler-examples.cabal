@@ -26,8 +26,10 @@ source-repository head
 library
   exposed-modules:
       Language.Test.Spec
-      Language.Test.Wat
-      Language.Wat
+      Language.Test.Wasm
+      Language.Test.Wasm.Wat
+      Language.Wasm.Wat
+      Language.Wasm.Wat.Utilities
       Lib
       Utilities.Unsafe
   other-modules:
@@ -61,11 +63,13 @@ library
     , mtl
     , parsec
     , prettyprinter
+    , process
     , tasty
     , tasty-golden
     , tasty-hunit
     , tasty-quickcheck
     , template-haskell
+    , temporary
     , text
     , transformers
   default-language: GHC2024
@@ -104,11 +108,13 @@ executable compiler-examples-exe
     , mtl
     , parsec
     , prettyprinter
+    , process
     , tasty
     , tasty-golden
     , tasty-hunit
     , tasty-quickcheck
     , template-haskell
+    , temporary
     , text
     , transformers
   default-language: GHC2024
@@ -148,11 +154,13 @@ test-suite compiler-examples-test
     , mtl
     , parsec
     , prettyprinter
+    , process
     , tasty
     , tasty-golden
     , tasty-hunit
     , tasty-quickcheck
     , template-haskell
+    , temporary
     , text
     , transformers
   default-language: GHC2024
