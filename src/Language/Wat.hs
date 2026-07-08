@@ -225,9 +225,9 @@ data CompType
   deriving (Generic, Eq, Show, Ord)
 
 instance EncodeWat CompType where
-  encodeWat (Struct_CompType fs) = parens $ "struct" <> hcat ((punctuate " " . fmap encodeWat) fs)
+  encodeWat (Struct_CompType fs) = parens $ "struct" <> (hcat . punctuate " " . fmap encodeWat) fs
   encodeWat (Array_CompType ft) = parens $ "array" <+> encodeWat ft
-  encodeWat (Func_CompType ps rs) = parens $ "func" <> hcat ((punctuate " " . fmap encodeWat) ps) <> hcat ((punctuate " " . fmap encodeWat) rs)
+  encodeWat (Func_CompType ps rs) = parens $ "func" <> (hcat . punctuate " " . fmap encodeWat) ps <> (hcat . punctuate " " . fmap encodeWat) rs
 
 -- | A field declaration with an optional identifier and field type.
 data Field = Field (Maybe Identifier) FieldType
@@ -294,7 +294,7 @@ data SubType = SubType (Maybe Final) [TypeIdx] CompType
   deriving (Generic, Eq, Show, Ord)
 
 instance EncodeWat SubType where
-  encodeWat (SubType fM tis ct) = "(" <> "sub" <+> maybe mempty encodeWat fM <> hcat ((punctuate " " . fmap encodeWat) tis) <+> encodeWat ct <> ")"
+  encodeWat (SubType fM tis ct) = parens $ "sub" <+> maybe mempty encodeWat fM <> (hcat . punctuate " " . fmap encodeWat) tis <+> encodeWat ct
 
 -- | Type definitions declare custom types with optional identifiers.
 data TypeDef = TypeDef (Maybe Identifier) SubType
@@ -308,7 +308,7 @@ data RecType = RecType [TypeDef]
   deriving (Generic, Eq, Show, Ord)
 
 instance EncodeWat RecType where
-  encodeWat (RecType tds) = "(" <> "rec" <> hcat ((punctuate " " . fmap encodeWat) tds) <> ")"
+  encodeWat (RecType tds) = parens $ "rec" <> (hcat . punctuate " " . fmap encodeWat) tds
 
 -- ### 6.4.8 Address Types
 
@@ -398,7 +398,7 @@ data TypeUse = TypeUse TypeIdx [Param] [Result]
   deriving (Generic, Eq, Show, Ord)
 
 instance EncodeWat TypeUse where
-  encodeWat (TypeUse ti ps rs) = parens ("type" <+> encodeWat ti) <> hcat ((punctuate " " . fmap encodeWat) ps) <> hcat ((punctuate " " . fmap encodeWat) rs)
+  encodeWat (TypeUse ti ps rs) = parens ("type" <+> encodeWat ti) <> (hcat . punctuate " " . fmap encodeWat) ps <> (hcat . punctuate " " . fmap encodeWat) rs
 
 -- ## 6.5 Instructions
 
@@ -449,7 +449,7 @@ instance EncodeWat BlockInstr where
   encodeWat (Block_BlockInstr idM bt body idEndM) = "block" <+> maybe mempty encodeWat idM <+> encodeWat bt <+> (if null body then mempty else encodeWat (Instrs body)) <+> "end" <+> maybe mempty encodeWat idEndM
   encodeWat (Loop_BlockInstr idM bt body idEndM) = "loop" <+> maybe mempty encodeWat idM <+> encodeWat bt <+> (if null body then mempty else encodeWat (Instrs body)) <+> "end" <+> maybe mempty encodeWat idEndM
   encodeWat (If_BlockInstr idM bt thenBody idElseM elseBody idEndM) = "if" <+> maybe mempty encodeWat idM <+> encodeWat bt <+> (if null thenBody then mempty else encodeWat (Instrs thenBody)) <> (if null elseBody then mempty else " else" <+> maybe mempty encodeWat idElseM <+> encodeWat (Instrs elseBody)) <+> "end" <+> maybe mempty encodeWat idEndM
-  encodeWat (TryTable_BlockInstr idM bt cs body idEndM) = "try_table" <+> maybe mempty encodeWat idM <+> encodeWat bt <+> hcat ((punctuate " " . fmap encodeWat) cs) <+> (if null body then mempty else encodeWat (Instrs body)) <+> "end" <+> maybe mempty encodeWat idEndM
+  encodeWat (TryTable_BlockInstr idM bt cs body idEndM) = "try_table" <+> maybe mempty encodeWat idM <+> encodeWat bt <+> (hcat . punctuate " " . fmap encodeWat) cs <+> (if null body then mempty else encodeWat (Instrs body)) <+> "end" <+> maybe mempty encodeWat idEndM
 
 -- | Memory instruction arguments (offset and alignment).
 data MemArg = MemArg (Maybe Natural) (Maybe Natural)
@@ -584,11 +584,11 @@ data FoldedInstr
   deriving (Generic, Eq, Show, Ord)
 
 instance EncodeWat FoldedInstr where
-  encodeWat (Plain_FoldedInstr p inputs) = "(" <> encodeWat p <> hcat ((punctuate " " . fmap encodeWat) inputs) <> ")"
-  encodeWat (Block_FoldedInstr idM bt body) = "(" <> "block" <+> maybe mempty encodeWat idM <+> encodeWat bt <+> (if null body then mempty else encodeWat (Instrs body)) <> ")"
-  encodeWat (Loop_FoldedInstr idM bt body) = "(" <> "loop" <+> maybe mempty encodeWat idM <+> encodeWat bt <+> (if null body then mempty else encodeWat (Instrs body)) <> ")"
-  encodeWat (If_FoldedInstr idM bt inputs thenBody elseBody) = "(" <> "if" <+> maybe mempty encodeWat idM <+> encodeWat bt <> hcat ((punctuate " " . fmap encodeWat) inputs) <+> "(" <> "then" <+> (if null thenBody then mempty else encodeWat (Instrs thenBody)) <> ")" <+> (if null elseBody then mempty else "(" <> "else" <+> encodeWat (Instrs elseBody) <> ")") <> ")"
-  encodeWat (TryTable_FoldedInstr idM bt cs body) = "(" <> "try_table" <+> maybe mempty encodeWat idM <+> encodeWat bt <> hcat ((punctuate " " . fmap encodeWat) cs) <+> (if null body then mempty else encodeWat (Instrs body)) <> ")"
+  encodeWat (Plain_FoldedInstr p inputs) = parens $ encodeWat p <> (hcat . punctuate " " . fmap encodeWat) inputs
+  encodeWat (Block_FoldedInstr idM bt body) = parens $ "block" <+> maybe mempty encodeWat idM <+> encodeWat bt <+> (if null body then mempty else encodeWat (Instrs body))
+  encodeWat (Loop_FoldedInstr idM bt body) = parens $ "loop" <+> maybe mempty encodeWat idM <+> encodeWat bt <+> (if null body then mempty else encodeWat (Instrs body))
+  encodeWat (If_FoldedInstr idM bt inputs thenBody elseBody) = parens $ "if" <+> maybe mempty encodeWat idM <+> encodeWat bt <> hcat ((punctuate " " . fmap encodeWat) inputs) <+> parens ("then" <+> (if null thenBody then mempty else encodeWat (Instrs thenBody))) <+> (if null elseBody then mempty else parens $ "else" <+> encodeWat (Instrs elseBody))
+  encodeWat (TryTable_FoldedInstr idM bt cs body) = parens $ "try_table" <+> maybe mempty encodeWat idM <+> encodeWat bt <> hcat ((punctuate " " . fmap encodeWat) cs) <+> (if null body then mempty else encodeWat (Instrs body))
 
 -- ### Expressions
 
@@ -738,7 +738,7 @@ data Func = Func (Maybe Identifier) TypeUse [Local] Expr
   deriving (Generic, Eq, Show, Ord)
 
 instance EncodeWat Func where
-  encodeWat (Func idM tu ls e) = "(" <> "func" <+> maybe mempty encodeWat idM <+> encodeWat tu <> hcat ((punctuate " " . fmap encodeWat) ls) <+> encodeWat e <> ")"
+  encodeWat (Func idM tu ls e) = parens $ "func" <+> maybe mempty encodeWat idM <+> encodeWat tu <> hcat ((punctuate " " . fmap encodeWat) ls) <+> encodeWat e
 
 -- ### 6.6.8 Data Segments
 
@@ -786,7 +786,7 @@ data ElemList = ElemList RefType [ElemExpr]
 
 instance EncodeWat ElemList where
   encodeWat (ElemList rt es) =
-    encodeWat rt <> hcat ((punctuate " " . fmap encodeWat) es)
+    encodeWat rt <> (hcat . punctuate " " . fmap encodeWat) es
 
 -- | Element segments allow for an optional table index to identify the table to initialize.
 data ElemSegment = ElemSegment (Maybe Identifier) ElemMode ElemList
