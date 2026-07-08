@@ -25,6 +25,10 @@ source-repository head
 
 library
   exposed-modules:
+      Language.Calculator.Compilation
+      Language.Calculator.Interpretation
+      Language.Calculator.Syntax
+      Language.Rtn.Syntax
       Language.Test.Spec
       Language.Test.Wasm
       Language.Test.Wasm.Wat

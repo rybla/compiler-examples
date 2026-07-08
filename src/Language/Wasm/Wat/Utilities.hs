@@ -10,6 +10,8 @@ import System.Exit (ExitCode (ExitFailure, ExitSuccess))
 import System.Process.Text.Lazy (readProcessWithExitCode)
 import Utilities (layoutUnbounded)
 
+--------------------------------
+
 formatWat :: Module -> ExceptT LazyText IO LazyText
 formatWat m = do
   let t = renderLazy . layoutUnbounded . pretty . encodeWatSexp $ m

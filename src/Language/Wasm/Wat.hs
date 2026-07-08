@@ -14,21 +14,21 @@ import Prettyprinter.Util (reflow)
 
 --------------------------------
 
-data Sexp = Node Text [Sexp]
+data Wat = Node Text [Wat]
   deriving (Generic, Eq, Show, Ord)
 
-pattern Leaf :: Text -> Sexp
+pattern Leaf :: Text -> Wat
 pattern Leaf t = Node t []
 
-instance Pretty Sexp where
+instance Pretty Wat where
   pretty (Leaf t) = reflow t
   pretty (Node t es) = parens $ reflow t <+> (hcat . punctuate " " . fmap pretty) es
 
 class EncodeWatSexp a where
-  encodeWatSexp :: a -> Sexp
+  encodeWatSexp :: a -> Wat
 
 class EncodeWatSexpList a where
-  encodeWatSexpList :: a -> [Sexp]
+  encodeWatSexpList :: a -> [Wat]
 
 instance (EncodeWatSexp a) => EncodeWatSexpList (Maybe a) where
   encodeWatSexpList = foldMap (singleton . encodeWatSexp)
@@ -1028,45 +1028,45 @@ data Module = Module (Maybe Identifier) [Decl]
 -- EncodeWatSexp Instances and Helpers
 --------------------------------
 
-limitsSexpList :: Limits -> [Sexp]
+limitsSexpList :: Limits -> [Wat]
 limitsSexpList (Limits n mM) = encodeWatSexp n : foldMap (\m -> [Leaf (Text.pack (show m))]) mM
 
-memTypeSexpList :: MemType -> [Sexp]
+memTypeSexpList :: MemType -> [Wat]
 memTypeSexpList (MemType atM lims) = encodeWatSexpList atM <> limitsSexpList lims
 
-tableTypeSexpList :: TableType -> [Sexp]
+tableTypeSexpList :: TableType -> [Wat]
 tableTypeSexpList (TableType atM lims rt) = encodeWatSexpList atM <> (limitsSexpList lims <> [encodeWatSexp rt])
 
-blockTypeSexpList :: BlockType -> [Sexp]
+blockTypeSexpList :: BlockType -> [Wat]
 blockTypeSexpList (Result_BlockType rM) = encodeWatSexpList rM
 blockTypeSexpList (TypeUse_BlockType tu) = [encodeWatSexp tu]
 
-memArgSexpList :: MemArg -> [Sexp]
+memArgSexpList :: MemArg -> [Wat]
 memArgSexpList (MemArg offsetM alignM) = foldMap (\o -> [Leaf ("offset=" <> Text.pack (show o))]) offsetM <> foldMap (\a -> [Leaf ("align=" <> Text.pack (show a))]) alignM
 
-exprSexpList :: Expr -> [Sexp]
+exprSexpList :: Expr -> [Wat]
 exprSexpList (Expr is) = fmap encodeWatSexp is
 
-instrsSexpList :: Instrs -> [Sexp]
+instrsSexpList :: Instrs -> [Wat]
 instrsSexpList (Instrs is) = fmap encodeWatSexp is
 
-elemListSexpList :: ElemList -> [Sexp]
+elemListSexpList :: ElemList -> [Wat]
 elemListSexpList (ElemList rt es) =
   encodeWatSexp rt : fmap encodeWatSexp es
 
-dataModeSexpList :: DataMode -> [Sexp]
+dataModeSexpList :: DataMode -> [Wat]
 dataModeSexpList Passive_DataMode = []
 dataModeSexpList (Active_DataMode x e) = [Node "memory" [encodeWatSexp x], Node "offset" (exprSexpList e)]
 
-elemModeSexpList :: ElemMode -> [Sexp]
+elemModeSexpList :: ElemMode -> [Wat]
 elemModeSexpList Passive_ElemMode = []
 elemModeSexpList (Active_ElemMode x e) = [Node "table" [encodeWatSexp x], Node "offset" (exprSexpList e)]
 elemModeSexpList Declare_ElemMode = [Leaf "declare"]
 
-encMemSexp :: Text -> MemIdx -> MemArg -> Sexp
+encMemSexp :: Text -> MemIdx -> MemArg -> Wat
 encMemSexp op m arg = Node op (encodeWatSexp m : memArgSexpList arg)
 
-encMemLaneSexp :: Text -> MemIdx -> MemArg -> LaneIdx -> Sexp
+encMemLaneSexp :: Text -> MemIdx -> MemArg -> LaneIdx -> Wat
 encMemLaneSexp op m arg lane = Node op (encodeWatSexp m : (memArgSexpList arg <> [encodeWatSexp lane]))
 
 instance EncodeWatSexp Text where
