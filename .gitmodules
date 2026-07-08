@@ -1,0 +1,9 @@
+[submodule ".agents/skills/just-skill"]
+	path = .agents/skills/just-skill
+	url = git@github.com:rybla/just-skill.git
+[submodule ".agents/skills/haskell-stack-skill"]
+	path = .agents/skills/haskell-stack-skill
+	url = git@github.com:rybla/haskell-stack-skill.git
+[submodule ".agents/skills/haskell-skill"]
+	path = .agents/skills/haskell-skill
+	url = git@github.com:rybla/haskell-skill.git

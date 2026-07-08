@@ -1,0 +1,2354 @@
+# ignore
+
+- ignore: { name: "Use newtype instead of data" }
+- ignore: { name: "Eta reduce" }
+
+# custom
+
+- functions:
+    - {
+        name: "error",
+        within: [Utilities.Unsafe],
+        message:
+          "Always prefer pure approaches instead. Consider lifting this
+          functionality into a monadic action that implements MonadError.",
+      }
+    - {
+        name: "undefined",
+        within: [],
+        message:
+          "Always prefer pure approaches instead. Consider lifting this
+          functionality into a monadic action that implements MonadError.",
+      }
+
+- warning:
+    { name: "todo", lhs: "todo s", rhs: "replace with actual implementation" }
+
+- warning:
+    { name: "todo", lhs: "todo $ s", rhs: "replace with actual implementation" }
+
+# group: default
+
+# I/O
+
+- warning: { lhs: putStrLn (show x), rhs: print x }
+- warning: { lhs: putStr (x <> "\n"), rhs: putStrLn x }
+- warning: { lhs: putStr (x <> y <> "\n"), rhs: putStrLn (x <> y) }
+- warning: { lhs: mapM_ putChar, rhs: putStr }
+- warning: { lhs: hGetChar stdin, rhs: getChar }
+- warning: { lhs: hGetLine stdin, rhs: getLine }
+- warning: { lhs: hGetContents stdin, rhs: getContents }
+- warning: { lhs: hPutChar stdout, rhs: putChar }
+- warning: { lhs: hPutStr stdout, rhs: putStr }
+- warning: { lhs: hPutStrLn stdout, rhs: putStrLn }
+- warning: { lhs: hPrint stdout, rhs: print }
+- warning: { lhs: hWaitForInput a 0, rhs: hReady a }
+- warning: { lhs: hPutStrLn a (show b), rhs: hPrint a b }
+- warning: { lhs: hIsEOF stdin, rhs: isEOF }
+- warning: { lhs: withFile f WriteMode (\h -> hPutStr h x), rhs: writeFile f x }
+- warning:
+    {
+      lhs: withFile f WriteMode (\h -> hPutStrLn h x),
+      rhs: writeFile f (x <> "\n"),
+    }
+- warning:
+    { lhs: withFile f AppendMode (\h -> hPutStr h x), rhs: appendFile f x }
+- warning:
+    {
+      lhs: withFile f AppendMode (\h -> hPutStrLn h x),
+      rhs: appendFile f (x <> "\n"),
+    }
+
+# EXIT
+
+- warning: { lhs: exitWith ExitSuccess, rhs: exitSuccess }
+
+# ORD
+
+- warning:
+    { lhs: not (a == b), rhs: a /= b, note: incorrect if either value is NaN }
+- warning:
+    { lhs: not (a /= b), rhs: a == b, note: incorrect if either value is NaN }
+- warning:
+    { lhs: not (a >  b), rhs: a <= b, note: incorrect if either value is NaN }
+- warning:
+    { lhs: not (a >= b), rhs: a <  b, note: incorrect if either value is NaN }
+- warning:
+    { lhs: not (a <  b), rhs: a >= b, note: incorrect if either value is NaN }
+- warning:
+    { lhs: not (a <= b), rhs: a >  b, note: incorrect if either value is NaN }
+- warning: { lhs: compare x y /= GT, rhs: x <= y }
+- warning: { lhs: compare x y == LT, rhs: x < y }
+- warning: { lhs: compare x y /= LT, rhs: x >= y }
+- warning: { lhs: compare x y == GT, rhs: x > y }
+- warning: { lhs: compare x y == EQ, rhs: x == y }
+- warning: { lhs: compare x y /= EQ, rhs: x /= y }
+- warning: { lhs: head (sort x), rhs: minimum x }
+- warning: { lhs: last (sort x), rhs: maximum x }
+- warning: { lhs: head (sortBy f x), rhs: minimumBy f x, side: isCompare f }
+- warning: { lhs: last (sortBy f x), rhs: maximumBy f x, side: isCompare f }
+- warning:
+    {
+      lhs: reverse (sortBy f x),
+      rhs: sortBy (flip f) x,
+      name: Avoid reverse,
+      side: isCompare f,
+      note: Stabilizes sort order,
+    }
+- warning:
+    {
+      lhs: sortBy (flip (comparing f)),
+      rhs: sortBy (comparing (Data.Ord.Down . f)),
+    }
+- warning:
+    {
+      lhs: reverse (sortOn f x),
+      rhs: sortOn (Data.Ord.Down . f) x,
+      name: Avoid reverse,
+      note: Stabilizes sort order,
+    }
+- warning:
+    {
+      lhs: reverse (sort x),
+      rhs: sortBy (comparing Data.Ord.Down) x,
+      name: Avoid reverse,
+      note: Stabilizes sort order,
+    }
+- warning: { lhs: flip (g `on` h), rhs: flip g `on` h, name: Move flip }
+- warning: { lhs: (f `on` g) `on` h, rhs: f `on` (g . h), name: Use on once }
+- warning: { lhs: if a >= b then a else b, rhs: max a b }
+- warning: { lhs: if a >= b then b else a, rhs: min a b }
+- warning: { lhs: if a > b then a else b, rhs: max a b }
+- warning: { lhs: if a > b then b else a, rhs: min a b }
+- warning: { lhs: if a <= b then a else b, rhs: min a b }
+- warning: { lhs: if a <= b then b else a, rhs: max a b }
+- warning: { lhs: if a < b then a else b, rhs: min a b }
+- warning: { lhs: if a < b then b else a, rhs: max a b }
+- warning: { lhs: "maximum [a, b]", rhs: max a b }
+- warning: { lhs: "minimum [a, b]", rhs: min a b }
+
+# READ/SHOW
+
+- warning: { lhs: showsPrec 0 x "", rhs: show x }
+- warning: { lhs: "showsPrec 0 x []", rhs: show x }
+- warning: { lhs: readsPrec 0, rhs: reads }
+- warning: { lhs: showsPrec 0, rhs: shows }
+- warning: { lhs: showIntAtBase 16 intToDigit, rhs: showHex }
+- warning: { lhs: showIntAtBase 8 intToDigit, rhs: showOct }
+
+# LIST
+
+- warning: { lhs: concat (map f x), rhs: concatMap f x }
+- warning: { lhs: concat (f <$> x), rhs: concatMap f x }
+- warning: { lhs: concat (x <&> f), rhs: concatMap f x }
+- warning: { lhs: concat (fmap f x), rhs: concatMap f x }
+- warning: { lhs: "concat [a, b]", rhs: a <> b }
+- warning: { lhs: "sum [a, b]", rhs: a + b, name: "Use + directly" }
+- warning: { lhs: map f (map g x), rhs: map (f . g) x, name: Use map once }
+- warning:
+    {
+      lhs: concatMap f (map g x),
+      rhs: concatMap (f . g) x,
+      name: Fuse concatMap/map,
+    }
+- warning: { lhs: x !! 0, rhs: head x }
+- warning: { lhs: take n (repeat x), rhs: replicate n x }
+- warning: { lhs: map f (replicate n x), rhs: replicate n (f x) }
+- warning: { lhs: map f (repeat x), rhs: repeat (f x) }
+- warning: { lhs: concatMap f (repeat x), rhs: cycle (f x) }
+- warning: { lhs: concat (repeat x), rhs: cycle x }
+- warning: { lhs: "cycle [x]", rhs: repeat x }
+- warning: { lhs: head (reverse x), rhs: last x }
+- warning: { lhs: last (reverse x), rhs: head x, note: IncreasesLaziness }
+- warning: { lhs: head (drop n x), rhs: x !! n, side: isNat n }
+- warning:
+    {
+      lhs: head (drop n x),
+      rhs: x !! max 0 n,
+      side: not (isNat n) && not (isNeg n),
+    }
+- warning: { lhs: reverse (init x), rhs: tail (reverse x) }
+- warning:
+    { lhs: reverse (tail (reverse x)), rhs: init x, note: IncreasesLaziness }
+- warning:
+    {
+      lhs: reverse (reverse x),
+      rhs: x,
+      note: IncreasesLaziness,
+      name: Redundant reverse,
+    }
+- warning: { lhs: isPrefixOf (reverse x) (reverse y), rhs: isSuffixOf x y }
+- warning: { lhs: "foldr (<>) []", rhs: concat }
+- warning: { lhs: foldr (<>) "", rhs: concat }
+- warning: { lhs: "foldr ((<>) . f) []", rhs: concatMap f }
+- warning: { lhs: foldr ((<>) . f) "", rhs: concatMap f }
+- warning: { lhs: "foldl (<>) []", rhs: concat, note: IncreasesLaziness }
+- warning: { lhs: foldl (<>) "", rhs: concat, note: IncreasesLaziness }
+- warning: { lhs: foldl f (head x) (tail x), rhs: foldl1 f x }
+- warning: { lhs: foldr f (last x) (init x), rhs: foldr1 f x }
+- warning: { lhs: "foldr (\\c a -> x : a) []", rhs: "map (\\c -> x)" }
+- warning: { lhs: foldr (.) id l z, rhs: foldr ($) z l }
+- warning: { lhs: span (not . p), rhs: break p }
+- warning: { lhs: break (not . p), rhs: span p }
+- warning: { lhs: span (notElem x), rhs: break (elem x), name: Use break }
+- warning: { lhs: break (notElem x), rhs: span (elem x), name: Use span }
+- warning:
+    {
+      lhs: "(takeWhile p x, dropWhile p x)",
+      rhs: span p x,
+      note: DecreasesLaziness,
+    }
+- warning: { lhs: fst (span p x), rhs: takeWhile p x }
+- warning: { lhs: snd (span p x), rhs: dropWhile p x }
+- warning: { lhs: fst (break p x), rhs: takeWhile (not . p) x }
+- warning: { lhs: snd (break p x), rhs: dropWhile (not . p) x }
+- warning:
+    { lhs: "(take n x, drop n x)", rhs: splitAt n x, note: DecreasesLaziness }
+- warning: { lhs: fst (splitAt p x), rhs: take p x }
+- warning: { lhs: snd (splitAt p x), rhs: drop p x }
+- warning: { lhs: concatMap (<> "\n"), rhs: unlines }
+- warning: { lhs: map id, rhs: id }
+- warning: { lhs: concatMap id, rhs: concat }
+- warning: { lhs: or (map p x), rhs: any p x }
+- warning: { lhs: and (map p x), rhs: all p x }
+- warning: { lhs: any f (map g x), rhs: any (f . g) x }
+- warning: { lhs: all f (map g x), rhs: all (f . g) x }
+- warning: { lhs: "zipWith (,)", rhs: zip }
+- warning: { lhs: "zipWith3 (,,)", rhs: zip3 }
+- warning: { lhs: map fst &&& map snd, rhs: unzip }
+- warning: { lhs: length x == 0, rhs: null x, note: IncreasesLaziness }
+- warning: { lhs: 0 == length x, rhs: null x, note: IncreasesLaziness }
+- warning: { lhs: length x < 1, rhs: null x, note: IncreasesLaziness }
+- warning: { lhs: 1 > length x, rhs: null x, note: IncreasesLaziness }
+- warning: { lhs: length x <= 0, rhs: null x, note: IncreasesLaziness }
+- warning: { lhs: 0 >= length x, rhs: null x, note: IncreasesLaziness }
+- warning: { lhs: "x == []", rhs: null x }
+- warning: { lhs: "[] == x", rhs: null x }
+- warning: { lhs: all (const False), rhs: "null" }
+- warning: { lhs: any (const True) x, rhs: not (null x), name: Use null }
+- warning:
+    {
+      lhs: length x /= 0,
+      rhs: not (null x),
+      note: IncreasesLaziness,
+      name: Use null,
+    }
+- warning:
+    {
+      lhs: 0 /= length x,
+      rhs: not (null x),
+      note: IncreasesLaziness,
+      name: Use null,
+    }
+- warning: { lhs: "\\x -> [x]", rhs: "(:[])", name: "Use :" }
+- warning:
+    { lhs: map f (zip x y), rhs: zipWith (curry f) x y, side: not (isApp f) }
+- warning: { lhs: "map f (fromMaybe [] x)", rhs: "maybe [] (map f) x" }
+- warning:
+    { lhs: "concatMap f (fromMaybe [] x)", rhs: "maybe [] (concatMap f) x" }
+- warning: { lhs: "concat (fromMaybe [] x)", rhs: "maybe [] concat x" }
+- warning: { lhs: not (elem x y), rhs: notElem x y }
+- warning: { lhs: not (notElem x y), rhs: elem x y }
+- warning:
+    { lhs: foldr f z (map g x), rhs: foldr (f . g) z x, name: Fuse foldr/map }
+- warning: { lhs: "x <> concatMap (' ':) y", rhs: "unwords (x:y)" }
+- warning: { lhs: intercalate " ", rhs: unwords }
+- warning:
+    { lhs: concat (intersperse x y), rhs: intercalate x y, side: notEq x " " }
+- warning: { lhs: concat (intersperse " " x), rhs: unwords x }
+- warning: { lhs: null (concat x), rhs: all null x }
+- warning: { lhs: null (filter f x), rhs: not (any f x), name: Use any }
+- warning: { lhs: "filter f x == []", rhs: not (any f x), name: Use any }
+- warning: { lhs: "filter f x /= []", rhs: any f x }
+- warning: { lhs: any id, rhs: or }
+- warning: { lhs: all id, rhs: and }
+- warning: { lhs: any (not . f) x, rhs: not (all f x), name: Hoist not }
+- warning: { lhs: all (not . f) x, rhs: not (any f x), name: Hoist not }
+- warning: { lhs: any ((==) a), rhs: elem a, note: ValidInstance Eq a }
+- warning: { lhs: any (== a), rhs: elem a }
+- warning: { lhs: any (a ==), rhs: elem a, note: ValidInstance Eq a }
+- warning: { lhs: all ((/=) a), rhs: notElem a, note: ValidInstance Eq a }
+- warning: { lhs: all (/= a), rhs: notElem a, note: ValidInstance Eq a }
+- warning: { lhs: all (a /=), rhs: notElem a, note: ValidInstance Eq a }
+- warning: { lhs: elem True, rhs: or }
+- warning: { lhs: notElem False, rhs: and }
+- warning: { lhs: True `elem` l, rhs: or l }
+- warning: { lhs: False `notElem` l, rhs: and l }
+- warning: { lhs: elem False, rhs: any not, name: Use any }
+- warning: { lhs: notElem True, rhs: all not, name: Use all }
+- warning: { lhs: False `elem` l, rhs: any not l, name: Use any }
+- warning: { lhs: True `notElem` l, rhs: all not l, name: Use all }
+- warning: { lhs: findIndex ((==) a), rhs: elemIndex a }
+- warning: { lhs: findIndex (a ==), rhs: elemIndex a }
+- warning: { lhs: findIndex (== a), rhs: elemIndex a }
+- warning: { lhs: findIndices ((==) a), rhs: elemIndices a }
+- warning: { lhs: findIndices (a ==), rhs: elemIndices a }
+- warning: { lhs: findIndices (== a), rhs: elemIndices a }
+- warning: { lhs: "lookup b (zip l [0..])", rhs: elemIndex b l }
+- warning: { lhs: "elem x [y]", rhs: x == y, note: ValidInstance Eq a }
+- warning: { lhs: "notElem x [y]", rhs: x /= y, note: ValidInstance Eq a }
+- warning: { lhs: "length [1..n]", rhs: max 0 n }
+- warning: { lhs: length x >= 0, rhs: "True", name: Length always non-negative }
+- warning: { lhs: 0 <= length x, rhs: "True", name: Length always non-negative }
+- warning:
+    {
+      lhs: length x > 0,
+      rhs: not (null x),
+      note: IncreasesLaziness,
+      name: Use null,
+    }
+- warning:
+    {
+      lhs: 0 < length x,
+      rhs: not (null x),
+      note: IncreasesLaziness,
+      name: Use null,
+    }
+- warning:
+    {
+      lhs: length x >= 1,
+      rhs: not (null x),
+      note: IncreasesLaziness,
+      name: Use null,
+    }
+- warning:
+    {
+      lhs: 1 <= length x,
+      rhs: not (null x),
+      note: IncreasesLaziness,
+      name: Use null,
+    }
+- warning:
+    {
+      lhs: take i x,
+      rhs: "[]",
+      side: isNegZero i,
+      name: Take on a non-positive,
+    }
+- warning:
+    { lhs: drop i x, rhs: x, side: isNegZero i, name: Drop on a non-positive }
+- warning: { lhs: last (scanl f z x), rhs: foldl f z x }
+- warning: { lhs: head (scanr f z x), rhs: foldr f z x }
+- warning:
+    {
+      lhs: "scanl (\\x _ -> a) b (replicate c d)",
+      rhs: "take c (iterate (\\x -> a) b)",
+    }
+- warning:
+    { lhs: "foldl (\\x _ -> a) b [1..c]", rhs: "iterate (\\x -> a) b !! c" }
+- warning: { lhs: iterate id, rhs: repeat }
+- warning: { lhs: zipWith f (repeat x), rhs: map (f x) }
+- warning:
+    {
+      lhs: zip (repeat x),
+      rhs: "map (_noParen_ x,)",
+      note: RequiresExtension TupleSections,
+      name: "Use map with tuple-section",
+    }
+- warning: { lhs: zipWith f y (repeat z), rhs: map (`f` z) y }
+- warning:
+    {
+      lhs: zip y (repeat z),
+      rhs: "map (,_noParen_ z) y",
+      note: RequiresExtension TupleSections,
+      name: "Use map with tuple-section",
+    }
+- warning: { lhs: listToMaybe (filter p x), rhs: find p x }
+- warning: { lhs: zip (take n x) (take n y), rhs: take n (zip x y) }
+- warning:
+    {
+      lhs: zip (take n x) (take m y),
+      rhs: take (min n m) (zip x y),
+      side: notEq n m,
+      note: [IncreasesLaziness, DecreasesLaziness],
+      name: Redundant take,
+    }
+
+# MONOIDS
+
+- warning: { lhs: mempty <> x, rhs: x, name: "Monoid law, left identity" }
+- warning:
+    { lhs: mempty `mappend` x, rhs: x, name: "Monoid law, left identity" }
+- warning: { lhs: x <> mempty, rhs: x, name: "Monoid law, right identity" }
+- warning:
+    { lhs: x `mappend` mempty, rhs: x, name: "Monoid law, right identity" }
+- warning: { lhs: foldr (<>) mempty, rhs: Data.Foldable.fold }
+- warning: { lhs: foldr mappend mempty, rhs: Data.Foldable.fold }
+- warning: { lhs: mempty x, rhs: mempty, name: Evaluate }
+- warning:
+    {
+      lhs: x `mempty` y,
+      rhs: mempty,
+      name: Evaluate,
+      note: "Make sure you didn't mean to use mappend instead of mempty",
+    }
+
+# TRAVERSABLES
+
+- warning: { lhs: traverse pure, rhs: pure, name: "Traversable law" }
+- warning:
+    {
+      lhs: traverse (pure . f) x,
+      rhs: pure (fmap f x),
+      name: "Traversable law",
+    }
+- warning: { lhs: sequenceA (map f x), rhs: traverse f x }
+- warning: { lhs: sequenceA (f <$> x), rhs: traverse f x }
+- warning: { lhs: sequenceA (x <&> f), rhs: traverse f x }
+- warning: { lhs: sequenceA (fmap f x), rhs: traverse f x }
+- warning: { lhs: sequenceA_ (map f x), rhs: traverse_ f x }
+- warning: { lhs: sequenceA_ (f <$> x), rhs: traverse_ f x }
+- warning: { lhs: sequenceA_ (x <&> f), rhs: traverse_ f x }
+- warning: { lhs: sequenceA_ (fmap f x), rhs: traverse_ f x }
+- warning: { lhs: foldMap id, rhs: fold }
+- warning: { lhs: fold (f <$> x), rhs: foldMap f x }
+- warning: { lhs: fold (x <&> f), rhs: foldMap f x }
+- warning: { lhs: fold (fmap f x), rhs: foldMap f x }
+- warning: { lhs: fold (map f x), rhs: foldMap f x }
+- warning:
+    { lhs: foldMap f (g <$> x), rhs: foldMap (f . g) x, name: Fuse foldMap/<$> }
+- warning:
+    { lhs: foldMap f (x <&> g), rhs: foldMap (f . g) x, name: Fuse foldMap/<&> }
+- warning:
+    {
+      lhs: foldMap f (fmap g x),
+      rhs: foldMap (f . g) x,
+      name: Fuse foldMap/fmap,
+    }
+- warning:
+    { lhs: foldMap f (map g x), rhs: foldMap (f . g) x, name: Fuse foldMap/map }
+- warning:
+    {
+      lhs: traverse f (fmap g x),
+      rhs: traverse (f . g) x,
+      name: Fuse traverse/fmap,
+    }
+- warning:
+    {
+      lhs: traverse f (g <$> x),
+      rhs: traverse (f . g) x,
+      name: Fuse traverse/<$>,
+    }
+- warning:
+    {
+      lhs: traverse f (x <&> g),
+      rhs: traverse (f . g) x,
+      name: Fuse traverse/<&>,
+    }
+- warning:
+    {
+      lhs: traverse_ f (fmap g x),
+      rhs: traverse_ (f . g) x,
+      name: Fuse traverse_/fmap,
+    }
+- warning:
+    {
+      lhs: traverse_ f (g <$> x),
+      rhs: traverse_ (f . g) x,
+      name: Fuse traverse_/<$>,
+    }
+- warning:
+    {
+      lhs: traverse_ f (x <&> g),
+      rhs: traverse_ (f . g) x,
+      name: Fuse traverse_/<&>,
+    }
+
+# BY
+
+- warning: { lhs: deleteBy (==), rhs: delete }
+- warning: { lhs: groupBy (==), rhs: group }
+- warning: { lhs: insertBy compare, rhs: insert }
+- warning: { lhs: intersectBy (==), rhs: intersect }
+- warning: { lhs: maximumBy compare, rhs: maximum }
+- warning: { lhs: minimumBy compare, rhs: minimum }
+- warning: { lhs: nubBy (==), rhs: nub }
+- warning: { lhs: sortBy compare, rhs: sort }
+- warning: { lhs: unionBy (==), rhs: union }
+
+# FOLDS
+
+- warning: { lhs: foldr  (>>) (pure ()), rhs: sequence_ }
+- warning: { lhs: foldr  (>>) (return ()), rhs: sequence_ }
+- warning: { lhs: foldr  (&&) True, rhs: and }
+- warning: { lhs: foldl  (&&) True, rhs: and, note: IncreasesLaziness }
+- warning: { lhs: foldr1 (&&), rhs: and, note: "RemovesError on `[]`" }
+- warning: { lhs: foldl1 (&&), rhs: and, note: "RemovesError on `[]`" }
+- warning: { lhs: foldr  (||) False, rhs: or }
+- warning: { lhs: foldl  (||) False, rhs: or, note: IncreasesLaziness }
+- warning: { lhs: foldr1 (||), rhs: or, note: "RemovesError on `[]`" }
+- warning: { lhs: foldl1 (||), rhs: or, note: "RemovesError on `[]`" }
+- warning: { lhs: foldl  (+) 0, rhs: sum }
+- warning: { lhs: foldr  (+) 0, rhs: sum }
+- warning: { lhs: foldl1 (+), rhs: sum, note: "RemovesError on `[]`" }
+- warning: { lhs: foldr1 (+), rhs: sum, note: "RemovesError on `[]`" }
+- warning: { lhs: foldl  (*) 1, rhs: product }
+- warning: { lhs: foldr  (*) 1, rhs: product }
+- warning: { lhs: foldl1 (*), rhs: product, note: "RemovesError on `[]`" }
+- warning: { lhs: foldr1 (*), rhs: product, note: "RemovesError on `[]`" }
+- warning: { lhs: foldl1 max, rhs: maximum }
+- warning: { lhs: foldr1 max, rhs: maximum }
+- warning: { lhs: foldl1 min, rhs: minimum }
+- warning: { lhs: foldr1 min, rhs: minimum }
+- warning: { lhs: foldr mplus mzero, rhs: msum }
+
+# FUNCTION
+
+- warning: { lhs: \x -> x, rhs: id }
+- warning: { lhs: \x y -> x, rhs: const }
+- warning: { lhs: curry fst, rhs: const }
+- warning:
+    { lhs: curry snd, rhs: \_ x -> x, note: "Alternatively, use const id" }
+- warning:
+    { lhs: flip const, rhs: \_ x -> x, note: "Alternatively, use const id" }
+- warning: { lhs: "\\(x,y) -> y", rhs: snd }
+- warning: { lhs: "\\(x,y) -> x", rhs: fst }
+- warning: { lhs: "\\x y -> f (x,y)", rhs: curry f }
+- warning: { lhs: "\\(x,y) -> f x y", rhs: uncurry f, note: IncreasesLaziness }
+- warning: { lhs: f (fst p) (snd p), rhs: uncurry f p }
+- warning: { lhs: "uncurry (\\x y -> z)", rhs: "\\(x,y) -> z" }
+- warning: { lhs: "curry (\\(x,y) -> z)", rhs: "\\x y -> z" }
+- warning: { lhs: uncurry (curry f), rhs: f, name: Redundant curry/uncurry }
+- warning: { lhs: curry (uncurry f), rhs: f, name: Redundant curry/uncurry }
+- warning: { lhs: "uncurry f (a, b)", rhs: f a b }
+- warning: { lhs: ($) (f x), rhs: f x, name: Redundant $ }
+- warning: { lhs: (f $), rhs: f, name: Redundant $ }
+- warning: { lhs: (& f), rhs: f, name: Redundant & }
+- warning:
+    { lhs: \x -> y, rhs: const y, side: isAtom y && not (isWildcard y) }
+    # If any isWildcard recursively then x may be used but not mentioned explicitly
+- warning: { lhs: flip f x y, rhs: f y x, side: isApp original && isAtom y }
+- warning: { lhs: id x, rhs: x }
+- warning: { lhs: id . x, rhs: x, name: Redundant id }
+- warning: { lhs: x . id, rhs: x, name: Redundant id }
+- warning:
+    {
+      lhs: "((,) x)",
+      rhs: "(_noParen_ x,)",
+      name: Use tuple-section,
+      note: RequiresExtension TupleSections,
+    }
+- warning:
+    {
+      lhs: "flip (,) x",
+      rhs: "(,_noParen_ x)",
+      name: Use tuple-section,
+      note: RequiresExtension TupleSections,
+    }
+- warning: { lhs: flip (flip f), rhs: f, note: DecreasesLaziness }
+- warning: { lhs: flip f <*> g, rhs: f =<< g, name: Redundant flip }
+- warning: { lhs: g <**> flip f, rhs: g >>= f, name: Redundant flip }
+- warning: { lhs: flip f =<< g, rhs: f <*> g, name: Redundant flip }
+- warning:
+    {
+      lhs: g >>= flip f,
+      rhs: g Control.Applicative.<**> f,
+      name: Redundant flip,
+    }
+- warning: { lhs: ($ x) . f, rhs: flip f x }
+
+# CHAR
+
+- warning: { lhs: "a >= 'a' && a <= 'z'", rhs: isAsciiLower a }
+- warning: { lhs: "'a' <= a && a <= 'z'", rhs: isAsciiLower a }
+- warning: { lhs: "a >= 'A' && a <= 'Z'", rhs: isAsciiUpper a }
+- warning: { lhs: "'A' <= a && a <= 'Z'", rhs: isAsciiUpper a }
+- warning: { lhs: "a >= '0' && a <= '9'", rhs: isDigit a }
+- warning: { lhs: "'0' <= a && a <= '9'", rhs: isDigit a }
+- warning: { lhs: "a >= '0' && a <= '7'", rhs: isOctDigit a }
+- warning: { lhs: "'0' <= a && a <= '7'", rhs: isOctDigit a }
+- warning: { lhs: isLower a || isUpper a, rhs: isAlpha a }
+- warning: { lhs: isUpper a || isLower a, rhs: isAlpha a }
+
+# BOOL
+
+- warning: { lhs: x == True, rhs: x, name: Redundant == }
+- warning: { lhs: x == False, rhs: not x, name: Redundant == }
+- warning: { lhs: True == a, rhs: a, name: Redundant == }
+- warning: { lhs: False == a, rhs: not a, name: Redundant == }
+- warning: { lhs: (== True), rhs: id, name: Redundant == }
+- warning: { lhs: (== False), rhs: not, name: Redundant == }
+- warning: { lhs: (True ==), rhs: id, name: Redundant == }
+- warning: { lhs: (False ==), rhs: not, name: Redundant == }
+- warning: { lhs: a /= True, rhs: not a, name: Redundant /= }
+- warning: { lhs: a /= False, rhs: a, name: Redundant /= }
+- warning: { lhs: True /= a, rhs: not a, name: Redundant /= }
+- warning: { lhs: False /= a, rhs: a, name: Redundant /= }
+- warning: { lhs: (/= True), rhs: not, name: Redundant /= }
+- warning: { lhs: (/= False), rhs: id, name: Redundant /= }
+- warning: { lhs: (True /=), rhs: not, name: Redundant /= }
+- warning: { lhs: (False /=), rhs: id, name: Redundant /= }
+- warning:
+    {
+      lhs: if a then x else x,
+      rhs: x,
+      note: IncreasesLaziness,
+      name: Redundant if,
+    }
+- warning: { lhs: if a then True else False, rhs: a, name: Redundant if }
+- warning: { lhs: if a then False else True, rhs: not a, name: Redundant if }
+- warning:
+    {
+      lhs: if a then t else (if b then t else f),
+      rhs: if a || b then t else f,
+      name: Redundant if,
+    }
+- warning:
+    {
+      lhs: if a then (if b then t else f) else f,
+      rhs: if a && b then t else f,
+      name: Redundant if,
+    }
+- warning:
+    {
+      lhs: if x then True else y,
+      rhs: x || y,
+      side: notEq y False,
+      name: Redundant if,
+    }
+- warning:
+    {
+      lhs: if x then y else False,
+      rhs: x && y,
+      side: notEq y True,
+      name: Redundant if,
+    }
+- warning:
+    {
+      lhs: if | b -> t | otherwise -> f,
+      rhs: if b then t else f,
+      name: Redundant multi-way if,
+    }
+- warning:
+    {
+      lhs: "case a of {True -> t; False -> f}",
+      rhs: if a then t else f,
+      name: Use if,
+    }
+- warning:
+    {
+      lhs: "case a of {False -> f; True -> t}",
+      rhs: if a then t else f,
+      name: Use if,
+    }
+- warning:
+    {
+      lhs: "case a of {True -> t; _ -> f}",
+      rhs: if a then t else f,
+      name: Use if,
+    }
+- warning:
+    {
+      lhs: "case a of {False -> f; _ -> t}",
+      rhs: if a then t else f,
+      name: Use if,
+    }
+- warning:
+    {
+      lhs: "if c then (True, x) else (False, x)",
+      rhs: "(c, x)",
+      note: IncreasesLaziness,
+      name: Redundant if,
+    }
+- warning:
+    {
+      lhs: "if c then (False, x) else (True, x)",
+      rhs: "(not c, x)",
+      note: IncreasesLaziness,
+      name: Redundant if,
+    }
+- warning: { lhs: "or [x, y]", rhs: x || y }
+- warning: { lhs: "or [x, y, z]", rhs: x || y || z }
+- warning: { lhs: "and [x, y]", rhs: x && y }
+- warning: { lhs: "and [x, y, z]", rhs: x && y && z }
+- warning:
+    {
+      lhs: if x then False else y,
+      rhs: not x && y,
+      side: notEq y True,
+      name: Redundant if,
+    }
+- warning:
+    {
+      lhs: if x then y else True,
+      rhs: not x || y,
+      side: notEq y False,
+      name: Redundant if,
+    }
+- warning: { lhs: not (not x), rhs: x, name: Redundant not }
+
+# ARROW
+
+- warning: { lhs: id *** g, rhs: second g }
+- warning: { lhs: f *** id, rhs: first f }
+- ignore: { lhs: zip (map f x) (map g x), rhs: map (f Control.Arrow.&&& g) x }
+- ignore: { lhs: "\\x -> (f x, g x)", rhs: f Control.Arrow.&&& g }
+- warning:
+    {
+      lhs: "(fst x, snd x)",
+      rhs: x,
+      note: DecreasesLaziness,
+      name: Redundant pair,
+    }
+
+# BIFUNCTOR
+
+- warning: { lhs: bimap id g, rhs: second g }
+- warning: { lhs: bimap f id, rhs: first f }
+- warning: { lhs: first id, rhs: id }
+- warning: { lhs: second id, rhs: id }
+- warning: { lhs: bimap id id, rhs: id }
+- warning: { lhs: first f (second g x), rhs: bimap f g x }
+- warning: { lhs: second g (first f x), rhs: bimap f g x }
+- warning: { lhs: first f (first g x), rhs: first (f . g) x }
+- warning: { lhs: second f (second g x), rhs: second (f . g) x }
+- warning: { lhs: bimap f h (bimap g i x), rhs: bimap (f . g) (h . i) x }
+- warning: { lhs: first f (bimap g h x), rhs: bimap (f . g) h x }
+- warning: { lhs: second g (bimap f h x), rhs: bimap f (g . h) x }
+- warning: { lhs: bimap f h (first g x), rhs: bimap (f . g) h x }
+- warning: { lhs: bimap f g (second h x), rhs: bimap f (g . h) x }
+- warning:
+    {
+      lhs: "\\(x,y) -> (f x, g y)",
+      rhs: Data.Bifunctor.bimap f g,
+      note: IncreasesLaziness,
+    }
+- warning:
+    {
+      lhs: "\\(x,y) -> (f x,y)",
+      rhs: Data.Bifunctor.first f,
+      note: IncreasesLaziness,
+    }
+- warning:
+    {
+      lhs: "\\(x,y) -> (x,f y)",
+      rhs: Data.Bifunctor.second f,
+      note: IncreasesLaziness,
+    }
+- warning: { lhs: "(f (fst x), g (snd x))", rhs: Data.Bifunctor.bimap f g x }
+- warning: { lhs: "(f (fst x), snd x)", rhs: Data.Bifunctor.first f x }
+- warning: { lhs: "(fst x, g (snd x))", rhs: Data.Bifunctor.second g x }
+
+# FUNCTOR
+
+- warning: { lhs: fmap f (fmap g x), rhs: fmap (f . g) x, name: Functor law }
+- ignore: { lhs: f <$> (g <$> x), rhs: f . g <$> x, name: Functor law }
+- ignore: { lhs: x <&> g <&> f, rhs: x <&> f . g, name: Functor law }
+- warning: { lhs: fmap id, rhs: id, name: Functor law }
+- warning: { lhs: id <$> x, rhs: x, name: Functor law }
+- warning: { lhs: x <&> id, rhs: x, name: Functor law }
+- warning: { lhs: f <$> g <$> x, rhs: f . g <$> x }
+- warning: { lhs: fmap f $ x, rhs: f <$> x, side: isApp x || isAtom x }
+- warning: { lhs: \x -> a <$> b x, rhs: fmap a . b }
+- warning: { lhs: \x -> b x <&> a, rhs: fmap a . b }
+- warning: { lhs: x *> pure y, rhs: x Data.Functor.$> y }
+- warning: { lhs: x *> return y, rhs: x Data.Functor.$> y }
+- warning: { lhs: pure x <* y, rhs: x Data.Functor.<$ y }
+- warning: { lhs: return x <* y, rhs: x Data.Functor.<$ y }
+- warning: { lhs: const x <$> y, rhs: x <$ y }
+- warning: { lhs: pure x <$> y, rhs: x <$ y }
+- warning: { lhs: return x <$> y, rhs: x <$ y }
+- warning: { lhs: x <&> const y, rhs: x Data.Functor.$> y }
+- warning: { lhs: x <&> pure y, rhs: x Data.Functor.$> y }
+- warning: { lhs: x <&> return y, rhs: x Data.Functor.$> y }
+- warning: { lhs: "fmap f (x,b)", rhs: "(x,f b)", name: Using fmap on tuple }
+- warning: { lhs: "f <$> (x,b)", rhs: "(x,f b)", name: Using <$> on tuple }
+- warning: { lhs: "(x,b) <&> f", rhs: "(x,f b)", name: Using <&> on tuple }
+- warning:
+    { lhs: "fmap f (x,y,b)", rhs: "(x,y,f b)", name: Using fmap on tuple }
+- warning: { lhs: "f <$> (x,y,b)", rhs: "(x,y,f b)", name: Using <$> on tuple }
+- warning: { lhs: "(x,y,b) <&> f", rhs: "(x,y,f b)", name: Using <&> on tuple }
+
+# APPLICATIVE
+
+- warning: { lhs: pure x <*> y, rhs: x <$> y }
+- warning: { lhs: return x <*> y, rhs: x <$> y }
+- warning: { lhs: x <* pure y, rhs: x }
+- warning: { lhs: x <* return y, rhs: x }
+- warning: { lhs: pure x *> y, rhs: "y", name: Redundant *> }
+- warning: { lhs: return x *> y, rhs: "y", name: Redundant *> }
+- warning: { lhs: "x <*> Nothing", rhs: "Nothing" }
+- warning: { lhs: "x <*> First Nothing", rhs: "First Nothing" }
+- warning: { lhs: "x <*> Last Nothing", rhs: "Last Nothing" }
+- warning: { lhs: "x <*> Left a", rhs: "Left a" }
+- warning: { lhs: "x <*> Ap []", rhs: "Ap []" }
+- warning: { lhs: "x <*> []", rhs: "[]" }
+
+# MONAD
+
+- warning: { lhs: pure a >>= f, rhs: f a, name: "Monad law, left identity" }
+- warning: { lhs: return a >>= f, rhs: f a, name: "Monad law, left identity" }
+- warning: { lhs: f =<< pure a, rhs: f a, name: "Monad law, left identity" }
+- warning: { lhs: f =<< return a, rhs: f a, name: "Monad law, left identity" }
+- warning: { lhs: m >>= pure, rhs: m, name: "Monad law, right identity" }
+- warning: { lhs: m >>= return, rhs: m, name: "Monad law, right identity" }
+- warning: { lhs: pure =<< m, rhs: m, name: "Monad law, right identity" }
+- warning: { lhs: return =<< m, rhs: m, name: "Monad law, right identity" }
+- warning: { lhs: liftM, rhs: fmap }
+- warning: { lhs: liftA, rhs: fmap }
+- warning: { lhs: m >>= pure . f, rhs: m Data.Functor.<&> f }
+- warning: { lhs: m >>= return . f, rhs: m Data.Functor.<&> f }
+- warning: { lhs: pure . f =<< m, rhs: f <$> m }
+- warning: { lhs: return . f =<< m, rhs: f <$> m }
+- warning: { lhs: fmap f x >>= g, rhs: x >>= g . f }
+- warning: { lhs: f <$> x >>= g, rhs: x >>= g . f }
+- warning: { lhs: x Data.Functor.<&> f >>= g, rhs: x >>= g . f }
+- warning: { lhs: g =<< fmap f x, rhs: g . f =<< x }
+- warning: { lhs: g =<< f <$> x, rhs: g . f =<< x }
+- warning: { lhs: g =<< (x Data.Functor.<&> f), rhs: g . f =<< x }
+- warning:
+    {
+      lhs: if x then y else pure (),
+      rhs: Control.Monad.when x $ _noParen_ y,
+      side: not (isAtom y),
+    }
+- warning:
+    {
+      lhs: if x then y else return (),
+      rhs: Control.Monad.when x $ _noParen_ y,
+      side: not (isAtom y),
+    }
+- warning:
+    {
+      lhs: if x then y else pure (),
+      rhs: Control.Monad.when x y,
+      side: isAtom y,
+    }
+- warning:
+    {
+      lhs: if x then y else return (),
+      rhs: Control.Monad.when x y,
+      side: isAtom y,
+    }
+- warning:
+    {
+      lhs: if x then pure () else y,
+      rhs: Control.Monad.unless x $ _noParen_ y,
+      side: not (isAtom y),
+    }
+- warning:
+    {
+      lhs: if x then return () else y,
+      rhs: Control.Monad.unless x $ _noParen_ y,
+      side: not (isAtom y),
+    }
+- warning:
+    {
+      lhs: if x then pure () else y,
+      rhs: Control.Monad.unless x y,
+      side: isAtom y,
+    }
+- warning:
+    {
+      lhs: if x then return () else y,
+      rhs: Control.Monad.unless x y,
+      side: isAtom y,
+    }
+- warning: { lhs: sequence (map f x), rhs: mapM f x }
+- warning: { lhs: sequence_ (map f x), rhs: mapM_ f x }
+- warning: { lhs: sequence (f <$> x), rhs: mapM f x }
+- warning: { lhs: sequence (x <&> f), rhs: mapM f x }
+- warning: { lhs: sequence (fmap f x), rhs: mapM f x }
+- warning: { lhs: sequence_ (f <$> x), rhs: mapM_ f x }
+- warning: { lhs: sequence_ (x <&> f), rhs: mapM_ f x }
+- warning: { lhs: sequence_ (fmap f x), rhs: mapM_ f x }
+- warning: { lhs: flip mapM, rhs: Control.Monad.forM }
+- warning: { lhs: flip mapM_, rhs: Control.Monad.forM_ }
+- warning: { lhs: flip forM, rhs: mapM }
+- warning: { lhs: flip forM_, rhs: mapM_ }
+- warning: { lhs: when (not x), rhs: unless x }
+- warning: { lhs: when (notElem x y), rhs: unless (elem x y), name: Use unless }
+- warning: { lhs: unless (not x), rhs: when x }
+- warning: { lhs: unless (notElem x y), rhs: when (elem x y), name: Use when }
+- warning: { lhs: x >>= id, rhs: Control.Monad.join x }
+- warning: { lhs: id =<< x, rhs: Control.Monad.join x }
+- warning: { lhs: join (f <$> x), rhs: f =<< x }
+- warning: { lhs: join (x <&> f), rhs: f =<< x }
+- warning: { lhs: join (fmap f x), rhs: f =<< x }
+- warning:
+    { lhs: a >> pure (), rhs: Control.Monad.void a, side: isAtom a || isApp a }
+- warning:
+    {
+      lhs: a >> return (),
+      rhs: Control.Monad.void a,
+      side: isAtom a || isApp a,
+    }
+- warning: { lhs: fmap (const ()), rhs: Control.Monad.void }
+- warning: { lhs: const () <$> x, rhs: Control.Monad.void x }
+- warning: { lhs: x <&> const (), rhs: Control.Monad.void x }
+- warning: { lhs: () <$ x, rhs: Control.Monad.void x }
+- warning: { lhs: flip (>=>), rhs: (<=<) }
+- warning: { lhs: flip (<=<), rhs: (>=>) }
+- warning: { lhs: flip (>>=), rhs: (=<<) }
+- warning: { lhs: flip (=<<), rhs: (>>=) }
+- warning: { lhs: \x -> f x >>= g, rhs: f Control.Monad.>=> g }
+- warning: { lhs: \x -> f =<< g x, rhs: f Control.Monad.<=< g }
+- warning: { lhs: (>>= f) . g, rhs: f Control.Monad.<=< g }
+- warning: { lhs: (f =<<) . g, rhs: f Control.Monad.<=< g }
+- warning: { lhs: a >> forever a, rhs: forever a }
+- warning: { lhs: liftM2 id, rhs: ap }
+- warning: { lhs: liftM2 f (pure x), rhs: fmap (f x) }
+- warning: { lhs: liftA2 f (return x), rhs: fmap (f x) }
+- warning: { lhs: liftM2 f (pure x), rhs: fmap (f x) }
+- warning: { lhs: liftM2 f (return x), rhs: fmap (f x) }
+- warning: { lhs: fmap f (pure x), rhs: pure (f x) }
+- warning: { lhs: fmap f (return x), rhs: return (f x) }
+- warning: { lhs: f <$> pure x, rhs: pure (f x) }
+- warning: { lhs: pure x <&> f, rhs: pure (f x) }
+- warning: { lhs: f <$> return x, rhs: return (f x) }
+- warning: { lhs: return x <&> f, rhs: return (f x) }
+- warning: { lhs: mapM (uncurry f) (zip l m), rhs: zipWithM f l m }
+- warning: { lhs: mapM_ (void . f), rhs: mapM_ f }
+- warning: { lhs: forM_ x (void . f), rhs: forM_ x f }
+- warning: { lhs: a >>= \_ -> b, rhs: a >> b }
+- warning: { lhs: m <* pure x, rhs: m }
+- warning: { lhs: m <* return x, rhs: m }
+- warning: { lhs: pure x *> m, rhs: m, name: Redundant *> }
+- warning: { lhs: return x *> m, rhs: m, name: Redundant *> }
+- warning: { lhs: pure x >> m, rhs: m, name: Redundant >> }
+- warning: { lhs: return x >> m, rhs: m, name: Redundant >> }
+- warning: { lhs: "forM [1..n] (const f)", rhs: replicateM n f }
+- warning: { lhs: "for [1..n] (const f)", rhs: replicateM n f }
+- warning: { lhs: "forM [1..n] (\\_ -> x)", rhs: replicateM n x }
+- warning: { lhs: "for [1..n] (\\_ -> x)", rhs: replicateM n x }
+
+# STATE MONAD
+
+- warning: { lhs: fst (runState x y), rhs: evalState x y }
+- warning: { lhs: snd (runState x y), rhs: execState x y }
+
+# MONAD LIST
+
+- warning: { lhs: unzip <$> mapM f x, rhs: Control.Monad.mapAndUnzipM f x }
+- warning: { lhs: mapM f x <&> unzip, rhs: Control.Monad.mapAndUnzipM f x }
+- warning: { lhs: fmap unzip (mapM f x), rhs: Control.Monad.mapAndUnzipM f x }
+- warning: { lhs: sequence (zipWith f x y), rhs: Control.Monad.zipWithM f x y }
+- warning:
+    { lhs: sequence_ (zipWith f x y), rhs: Control.Monad.zipWithM_ f x y }
+- warning: { lhs: sequence (replicate n x), rhs: Control.Monad.replicateM n x }
+- warning:
+    { lhs: sequence_ (replicate n x), rhs: Control.Monad.replicateM_ n x }
+- warning: { lhs: sequenceA (zipWith f x y), rhs: Control.Monad.zipWithM f x y }
+- warning:
+    { lhs: sequenceA_ (zipWith f x y), rhs: Control.Monad.zipWithM_ f x y }
+- warning: { lhs: sequenceA (replicate n x), rhs: Control.Monad.replicateM n x }
+- warning:
+    { lhs: sequenceA_ (replicate n x), rhs: Control.Monad.replicateM_ n x }
+- warning:
+    { lhs: mapM f (replicate n x), rhs: Control.Monad.replicateM n (f x) }
+- warning:
+    { lhs: mapM_ f (replicate n x), rhs: Control.Monad.replicateM_ n (f x) }
+- warning: { lhs: mapM f (map g x), rhs: mapM (f . g) x, name: Fuse mapM/map }
+- warning:
+    { lhs: mapM_ f (map g x), rhs: mapM_ (f . g) x, name: Fuse mapM_/map }
+- warning:
+    {
+      lhs: traverse f (map g x),
+      rhs: traverse (f . g) x,
+      name: Fuse traverse/map,
+    }
+- warning:
+    {
+      lhs: traverse_ f (map g x),
+      rhs: traverse_ (f . g) x,
+      name: Fuse traverse_/map,
+    }
+- warning: { lhs: mapM id, rhs: sequence }
+- warning: { lhs: mapM_ id, rhs: sequence_ }
+
+# APPLICATIVE / TRAVERSABLE
+
+- warning: { lhs: flip traverse, rhs: for }
+- warning: { lhs: flip for, rhs: traverse }
+- warning: { lhs: flip traverse_, rhs: for_ }
+- warning: { lhs: flip for_, rhs: traverse_ }
+- warning: { lhs: foldr (*>) (pure ()), rhs: sequenceA_ }
+- warning: { lhs: foldr (*>) (return ()), rhs: sequence_ }
+- warning: { lhs: foldr (<|>) empty, rhs: asum }
+- warning: { lhs: liftA2 (flip ($)), rhs: (<**>) }
+- warning: { lhs: liftA2 f (pure x), rhs: fmap (f x) }
+- warning: { lhs: liftA2 f (return x), rhs: fmap (f x) }
+- warning: { lhs: Just <$> a <|> pure Nothing, rhs: optional a }
+- warning: { lhs: Just <$> a <|> return Nothing, rhs: optional a }
+- warning: { lhs: empty <|> x, rhs: x, name: "Alternative law, left identity" }
+- warning: { lhs: x <|> empty, rhs: x, name: "Alternative law, right identity" }
+- warning: { lhs: traverse id, rhs: sequenceA }
+- warning: { lhs: traverse_ id, rhs: sequenceA_ }
+
+# LIST COMP
+
+- warning:
+    {
+      lhs: "if b then [x] else []",
+      rhs: "[x | b]",
+      name: Use list comprehension,
+    }
+- warning:
+    {
+      lhs: "if b then [] else [x]",
+      rhs: "[x | not b]",
+      name: Use list comprehension,
+    }
+- warning:
+    {
+      lhs: "[x | x <- y]",
+      rhs: "y",
+      side: isVar x,
+      name: Redundant list comprehension,
+    }
+- warning:
+    {
+      lhs: "[ f x | x <- [y] ]",
+      rhs: "[f y]",
+      side: isVar x,
+      name: Redundant list comprehension,
+    }
+
+# SEQ
+
+- warning: { lhs: seq x x, rhs: x, name: Redundant seq }
+- warning: { lhs: join seq, rhs: id, name: Redundant seq }
+- warning: { lhs: id $! x, rhs: x, name: Redundant $! }
+- warning: { lhs: seq x y, rhs: "y", side: isWHNF x, name: Redundant seq }
+- warning: { lhs: f $! x, rhs: f x, side: isWHNF x, name: Redundant $! }
+- warning:
+    { lhs: evaluate x, rhs: return x, side: isWHNF x, name: Redundant evaluate }
+- warning: { lhs: seq (rnf x) (), rhs: rnf x, name: Redundant seq }
+
+# TUPLE
+
+- warning: { lhs: fst (unzip x), rhs: map fst x }
+- warning: { lhs: snd (unzip x), rhs: map snd x }
+- warning: { lhs: "\\x y -> (x, y)", rhs: "(,)" }
+- warning: { lhs: "\\x y z -> (x, y, z)", rhs: "(,,)" }
+- warning: { lhs: "(,b) a", rhs: "(a,b)", side: isAtom a, name: Evaluate }
+- warning: { lhs: "(a,) b", rhs: "(a,b)", side: isAtom b, name: Evaluate }
+- warning:
+    {
+      lhs: "Data.List.NonEmpty.unzip",
+      rhs: "Data.Functor.unzip",
+      name: "Avoid NonEmpty.unzip",
+      note: "The function is being deprecated",
+    }
+
+# MAYBE
+
+- warning: { lhs: maybe x id, rhs: Data.Maybe.fromMaybe x }
+- warning: { lhs: maybe Nothing Just, rhs: id, name: Redundant maybe }
+- warning: { lhs: maybe False (const True), rhs: Data.Maybe.isJust }
+- warning: { lhs: maybe True (const False), rhs: Data.Maybe.isNothing }
+- warning: { lhs: maybe False (x ==), rhs: (Just x ==), name: Redundant maybe }
+- warning: { lhs: maybe True (x /=), rhs: (Just x /=), name: Redundant maybe }
+- warning:
+    {
+      lhs: maybe False (== x),
+      rhs: (Just x ==),
+      note: ValidInstance Eq x,
+      name: Redundant maybe,
+    }
+- warning:
+    {
+      lhs: maybe True (/= x),
+      rhs: (Just x /=),
+      note: ValidInstance Eq x,
+      name: Redundant maybe,
+    }
+# The following two hints seem to be somewhat unwelcome, e.g.
+# https://github.com/ndmitchell/hlint/issues/1177
+- ignore: {
+      lhs: fromMaybe False x,
+      rhs: Just True == x,
+      name: Redundant fromMaybe,
+    } # Eta expanded, see https://github.com/ndmitchell/hlint/issues/970#issuecomment-643645053
+- ignore:
+    { lhs: fromMaybe True x, rhs: Just False /= x, name: Redundant fromMaybe }
+- warning: { lhs: not (isNothing x), rhs: isJust x }
+- warning: { lhs: not (isJust x), rhs: isNothing x }
+- warning: { lhs: "maybe [] (:[])", rhs: maybeToList }
+- warning: { lhs: catMaybes (map f x), rhs: mapMaybe f x }
+- warning: { lhs: catMaybes (f <$> x), rhs: mapMaybe f x }
+- warning: { lhs: catMaybes (x <&> f), rhs: mapMaybe f x }
+- warning: { lhs: catMaybes (fmap f x), rhs: mapMaybe f x }
+- warning:
+    {
+      lhs: case x of Nothing -> y; Just a -> a,
+      rhs: Data.Maybe.fromMaybe y x,
+      side: isAtom y,
+      name: Replace case with fromMaybe,
+    }
+- warning:
+    {
+      lhs: case x of Just a -> a; Nothing -> y,
+      rhs: Data.Maybe.fromMaybe y x,
+      side: isAtom y,
+      name: Replace case with fromMaybe,
+    }
+- warning:
+    {
+      lhs: case x of Nothing -> y; Just a -> f a,
+      rhs: maybe y f x,
+      side: isAtom y && isAtom f,
+      name: Replace case with maybe,
+    }
+- warning:
+    {
+      lhs: case x of Just a -> f a; Nothing -> y,
+      rhs: maybe y f x,
+      side: isAtom y && isAtom f,
+      name: Replace case with maybe,
+    }
+- warning: { lhs: if isNothing x then y else f (fromJust x), rhs: maybe y f x }
+- warning: { lhs: if isJust x then f (fromJust x) else y, rhs: maybe y f x }
+- warning: { lhs: maybe Nothing (Just . f), rhs: fmap f }
+- warning: { lhs: map fromJust (filter isJust x), rhs: Data.Maybe.catMaybes x }
+- warning:
+    {
+      lhs: filter isJust (map f x),
+      rhs: map Just (mapMaybe f x),
+      name: Use mapMaybe,
+    }
+- warning:
+    {
+      lhs: filter isJust (f <*> x),
+      rhs: map Just (mapMaybe f x),
+      name: Use mapMaybe,
+    }
+- warning:
+    {
+      lhs: filter isJust (x <&> f),
+      rhs: map Just (mapMaybe f x),
+      name: Use mapMaybe,
+    }
+- warning:
+    {
+      lhs: filter isJust (fmap f x),
+      rhs: map Just (mapMaybe f x),
+      name: Use mapMaybe,
+    }
+- warning: { lhs: x == Nothing, rhs: isNothing x }
+- warning: { lhs: Nothing == x, rhs: isNothing x }
+- warning: { lhs: x /= Nothing, rhs: Data.Maybe.isJust x }
+- warning: { lhs: Nothing /= x, rhs: Data.Maybe.isJust x }
+- warning: { lhs: concatMap (maybeToList . f), rhs: Data.Maybe.mapMaybe f }
+- warning: { lhs: concatMap maybeToList, rhs: catMaybes }
+- warning: { lhs: maybe n Just x, rhs: x Control.Applicative.<|> n }
+- warning: { lhs: if isNothing x then y else fromJust x, rhs: fromMaybe y x }
+- warning: { lhs: if isJust x then fromJust x else y, rhs: fromMaybe y x }
+- warning: { lhs: isJust x && (fromJust x == y), rhs: x == Just y }
+- warning: { lhs: isJust y && (x == fromJust y), rhs: Just x == y }
+- warning:
+    {
+      lhs: mapMaybe f (map g x),
+      rhs: mapMaybe (f . g) x,
+      name: Fuse mapMaybe/map,
+    }
+- warning: { lhs: fromMaybe a (fmap f x), rhs: maybe a f x }
+- warning: { lhs: fromMaybe a (f <$> x), rhs: maybe a f x }
+- warning: { lhs: fromMaybe a (x <&> f), rhs: maybe a f x }
+- warning: { lhs: mapMaybe id, rhs: catMaybes }
+- warning:
+    { lhs: "[x | Just x <- a]", rhs: Data.Maybe.catMaybes a, side: isVar x }
+- warning:
+    {
+      lhs: case m of Nothing -> Nothing; Just x -> x,
+      rhs: Control.Monad.join m,
+    }
+- warning: { lhs: maybe Nothing id, rhs: join }
+- warning: { lhs: maybe Nothing f x, rhs: f =<< x }
+- warning:
+    { lhs: maybe x f (g <$> y), rhs: maybe x (f . g) y, name: Redundant <$> }
+- warning:
+    { lhs: maybe x f (y <&> g), rhs: maybe x (f . g) y, name: Redundant <&> }
+- warning:
+    { lhs: maybe x f (fmap g y), rhs: maybe x (f . g) y, name: Redundant fmap }
+- warning: { lhs: isJust (f <$> x), rhs: isJust x }
+- warning: { lhs: isJust (x <&> f), rhs: isJust x }
+- warning: { lhs: isJust (fmap f x), rhs: isJust x }
+- warning: { lhs: isNothing (f <$> x), rhs: isNothing x }
+- warning: { lhs: isNothing (x <&> f), rhs: isNothing x }
+- warning: { lhs: isNothing (fmap f x), rhs: isNothing x }
+- warning:
+    { lhs: fromJust (f <$> x), rhs: f (fromJust x), note: IncreasesLaziness }
+- warning:
+    { lhs: fromJust (x <&> f), rhs: f (fromJust x), note: IncreasesLaziness }
+- warning:
+    { lhs: fromJust (fmap f x), rhs: f (fromJust x), note: IncreasesLaziness }
+- warning:
+    { lhs: mapMaybe f (g <$> x), rhs: mapMaybe (f . g) x, name: Redundant <$> }
+- warning:
+    { lhs: mapMaybe f (x <&> g), rhs: mapMaybe (f . g) x, name: Redundant <&> }
+- warning:
+    {
+      lhs: mapMaybe f (fmap g x),
+      rhs: mapMaybe (f . g) x,
+      name: Redundant fmap,
+    }
+- warning:
+    { lhs: catMaybes (nub x), rhs: nub (catMaybes x), name: Move nub out }
+- warning: { lhs: lefts (nub x), rhs: nub (lefts x), name: Move nub out }
+- warning: { lhs: rights (nub x), rhs: nub (rights x), name: Move nub out }
+- warning:
+    {
+      lhs: catMaybes (reverse x),
+      rhs: reverse (catMaybes x),
+      name: Move reverse out,
+    }
+- warning:
+    { lhs: lefts (reverse x), rhs: reverse (lefts x), name: Move reverse out }
+- warning:
+    { lhs: rights (reverse x), rhs: reverse (rights x), name: Move reverse out }
+- warning:
+    { lhs: catMaybes (sort x), rhs: sort (catMaybes x), name: Move sort out }
+- warning: { lhs: lefts (sort x), rhs: sort (lefts x), name: Move sort out }
+- warning: { lhs: rights (sort x), rhs: sort (rights x), name: Move sort out }
+- warning:
+    {
+      lhs: catMaybes (nubOrd x),
+      rhs: nubOrd (catMaybes x),
+      name: Move nubOrd out,
+    }
+- warning:
+    { lhs: lefts (nubOrd x), rhs: nubOrd (lefts x), name: Move nubOrd out }
+- warning:
+    { lhs: rights (nubOrd x), rhs: nubOrd (rights x), name: Move nubOrd out }
+- warning:
+    {
+      lhs: filter f (reverse x),
+      rhs: reverse (filter f x),
+      name: Move reverse out,
+    }
+- warning:
+    {
+      lhs: mapMaybe f (reverse x),
+      rhs: reverse (mapMaybe f x),
+      name: Move reverse out,
+    }
+
+# EITHER
+
+- warning: { lhs: "[a | Left a <- b]", rhs: lefts b, side: isVar a }
+- warning: { lhs: "[a | Right a <- b]", rhs: rights b, side: isVar a }
+- warning: { lhs: either Left (Right . f), rhs: fmap f }
+- warning:
+    {
+      lhs: either f g (fmap h x),
+      rhs: either f (g . h) x,
+      name: Redundant fmap,
+    }
+- warning:
+    { lhs: either f g (h <$> x), rhs: either f (g . h) x, name: Redundant <$> }
+- warning:
+    { lhs: either f g (x <&> h), rhs: either f (g . h) x, name: Redundant <&> }
+- warning: { lhs: isLeft (fmap f x), rhs: isLeft x }
+- warning: { lhs: isLeft (f <$> x), rhs: isLeft x }
+- warning: { lhs: isLeft (x <&> f), rhs: isLeft x }
+- warning: { lhs: isRight (fmap f x), rhs: isRight x }
+- warning: { lhs: isRight (f <$> x), rhs: isRight x }
+- warning: { lhs: isRight (x <&> f), rhs: isRight x }
+- warning: { lhs: fromLeft x (fmap f y), rhs: fromLeft x y }
+- warning: { lhs: fromLeft x (f <$> y), rhs: fromLeft x y }
+- warning: { lhs: fromLeft x (y <&> f), rhs: fromLeft x y }
+- warning: { lhs: fromRight x (fmap f y), rhs: either (const x) f y }
+- warning: { lhs: fromRight x (f <$> y), rhs: either (const x) f y }
+- warning: { lhs: fromRight x (y <&> f), rhs: either (const x) f y }
+- warning: { lhs: either (const x) id, rhs: fromRight x }
+- warning: { lhs: either id (const x), rhs: fromLeft x }
+- warning: { lhs: either Left f x, rhs: f =<< x }
+
+# INFIX
+
+- warning:
+    {
+      lhs: elem x y,
+      rhs: x `elem` y,
+      side: not (isInfixApp original) && not (isParen result),
+      name: Use infix,
+    }
+- warning:
+    {
+      lhs: notElem x y,
+      rhs: x `notElem` y,
+      side: not (isInfixApp original) && not (isParen result),
+      name: Use infix,
+    }
+- warning:
+    {
+      lhs: isInfixOf x y,
+      rhs: x `isInfixOf` y,
+      side: not (isInfixApp original) && not (isParen result),
+      name: Use infix,
+    }
+- warning:
+    {
+      lhs: isSuffixOf x y,
+      rhs: x `isSuffixOf` y,
+      side: not (isInfixApp original) && not (isParen result),
+      name: Use infix,
+    }
+- warning:
+    {
+      lhs: isPrefixOf x y,
+      rhs: x `isPrefixOf` y,
+      side: not (isInfixApp original) && not (isParen result),
+      name: Use infix,
+    }
+- warning:
+    {
+      lhs: union x y,
+      rhs: x `union` y,
+      side: not (isInfixApp original) && not (isParen result),
+      name: Use infix,
+    }
+- warning:
+    {
+      lhs: intersect x y,
+      rhs: x `intersect` y,
+      side: not (isInfixApp original) && not (isParen result),
+      name: Use infix,
+    }
+
+# MATHS
+
+- warning:
+    {
+      lhs: fromIntegral x,
+      rhs: x,
+      side: isLitInt x,
+      name: Redundant fromIntegral,
+    }
+- warning:
+    {
+      lhs: fromInteger x,
+      rhs: x,
+      side: isLitInt x,
+      name: Redundant fromInteger,
+    }
+- warning: { lhs: x + negate y, rhs: x - y }
+- warning: { lhs: 0 - x, rhs: negate x }
+- warning: { lhs: negate (negate x), rhs: x, name: Redundant negate }
+- warning: { lhs: log y / log x, rhs: logBase x y }
+- warning: { lhs: sin x / cos x, rhs: tan x }
+- warning: { lhs: rem n 2 == 0, rhs: even n }
+- warning: { lhs: 0 == rem n 2, rhs: even n }
+- warning: { lhs: rem n 2 /= 0, rhs: odd n }
+- warning: { lhs: 0 /= rem n 2, rhs: odd n }
+- warning: { lhs: mod n 2 == 0, rhs: even n }
+- warning: { lhs: 0 == mod n 2, rhs: even n }
+- warning: { lhs: mod n 2 /= 0, rhs: odd n }
+- warning: { lhs: 0 /= mod n 2, rhs: odd n }
+- warning: { lhs: not (even x), rhs: odd x }
+- warning: { lhs: not (odd x), rhs: even x }
+- warning: { lhs: x ** 0.5, rhs: sqrt x }
+- warning: { lhs: x ^ 0, rhs: "1", name: Use 1 }
+- warning: { lhs: round (x - 0.5), rhs: floor x }
+
+# CONCURRENT
+
+- warning: { lhs: mapM_ (writeChan a), rhs: writeList2Chan a }
+- warning: { lhs: atomically (readTVar x), rhs: readTVarIO x }
+- warning: { lhs: atomically (newTVar x), rhs: newTVarIO x }
+- warning: { lhs: atomically (newTMVar x), rhs: newTMVarIO x }
+- warning: { lhs: atomically newEmptyTMVar, rhs: newEmptyTMVarIO }
+
+# TYPEABLE
+
+- warning: { lhs: "typeOf (a :: b)", rhs: "typeRep (Proxy :: Proxy b)" }
+
+# EXCEPTION
+
+- warning: { lhs: flip Control.Exception.catch, rhs: handle }
+- warning: { lhs: flip handle, rhs: Control.Exception.catch }
+- warning: { lhs: flip (catchJust p), rhs: handleJust p }
+- warning: { lhs: flip (handleJust p), rhs: catchJust p }
+- warning:
+    {
+      lhs: Control.Exception.bracket b (const a) (const t),
+      rhs: Control.Exception.bracket_ b a t,
+    }
+- warning:
+    { lhs: Control.Exception.bracket (openFile x y) hClose, rhs: withFile x y }
+- warning:
+    {
+      lhs: Control.Exception.bracket (openBinaryFile x y) hClose,
+      rhs: withBinaryFile x y,
+    }
+- warning: { lhs: throw (ErrorCall a), rhs: error a }
+- warning: { lhs: toException NonTermination, rhs: nonTermination }
+- warning: { lhs: toException NestedAtomically, rhs: nestedAtomically }
+
+# IOREF
+
+- warning: { lhs: modifyIORef r (const x), rhs: writeIORef r x }
+- warning: { lhs: modifyIORef r (\v -> x), rhs: writeIORef r x }
+
+# STOREABLE/PTR
+
+- warning: { lhs: castPtr nullPtr, rhs: nullPtr }
+- warning: { lhs: castPtr (castPtr x), rhs: castPtr x }
+- warning: { lhs: plusPtr (castPtr x), rhs: plusPtr x }
+- warning: { lhs: minusPtr (castPtr x), rhs: minusPtr x }
+- warning: { lhs: minusPtr x (castPtr y), rhs: minusPtr x y }
+- warning: { lhs: peekByteOff (castPtr x), rhs: peekByteOff x }
+- warning: { lhs: pokeByteOff (castPtr x), rhs: pokeByteOff x }
+
+# WEAK POINTERS
+
+- warning: { lhs: mkWeak a a b, rhs: mkWeakPtr a b }
+- warning: { lhs: "mkWeak a (a, b) c", rhs: mkWeakPair a b c }
+
+# FOLDABLE
+
+- warning:
+    {
+      lhs: case m of Nothing -> pure (); Just x -> f x,
+      rhs: Data.Foldable.for_ m f,
+    }
+- warning:
+    {
+      lhs: case m of Nothing -> return (); Just x -> f x,
+      rhs: Data.Foldable.forM_ m f,
+    }
+- warning:
+    {
+      lhs: case m of Just x -> f x; Nothing -> pure (),
+      rhs: Data.Foldable.for_ m f,
+    }
+- warning:
+    {
+      lhs: case m of Just x -> f x; Nothing -> return (),
+      rhs: Data.Foldable.forM_ m f,
+    }
+- warning:
+    { lhs: case m of Just x -> f x; _ -> pure (), rhs: Data.Foldable.for_ m f }
+- warning:
+    {
+      lhs: case m of Just x -> f x; _ -> return (),
+      rhs: Data.Foldable.forM_ m f,
+    }
+- warning:
+    { lhs: when (isJust m) (f (fromJust m)), rhs: Data.Foldable.for_ m f }
+- warning:
+    {
+      lhs: concatMap f (fmap g x),
+      rhs: concatMap (f . g) x,
+      name: Fuse concatMap/fmap,
+    }
+- warning:
+    {
+      lhs: concatMap f (g <$> x),
+      rhs: concatMap (f . g) x,
+      name: Fuse concatMap/<$>,
+    }
+- warning:
+    {
+      lhs: concatMap f (x <&> g),
+      rhs: concatMap (f . g) x,
+      name: Fuse concatMap/<&>,
+    }
+- warning: { lhs: null (concatMap f x), rhs: all (null . f) x }
+- warning: { lhs: or (concat x), rhs: any or x }
+- warning: { lhs: or (concatMap f x), rhs: any (or . f) x }
+- warning: { lhs: and (concat x), rhs: all and x }
+- warning: { lhs: and (concatMap f x), rhs: all (and . f) x }
+- warning: { lhs: any f (concat x), rhs: any (any f) x, name: Use any nested }
+- warning:
+    { lhs: any f (concatMap g x), rhs: any (any f . g) x, name: Use any nested }
+- warning: { lhs: all f (concat x), rhs: all (all f) x, name: Use all nested }
+- warning:
+    { lhs: all f (concatMap g x), rhs: all (all f . g) x, name: Use all nested }
+- warning: { lhs: fold (concatMap f x), rhs: foldMap (fold . f) x }
+- warning:
+    {
+      lhs: foldMap f (concatMap g x),
+      rhs: foldMap (foldMap f . g) x,
+      name: Use foldMap nested,
+    }
+- warning:
+    {
+      lhs: catMaybes (concatMap f x),
+      rhs: concatMap (catMaybes . f) x,
+      name: Move catMaybes,
+    }
+- warning:
+    {
+      lhs: catMaybes (concat x),
+      rhs: concatMap catMaybes x,
+      name: Move catMaybes,
+    }
+- warning:
+    {
+      lhs: filter f (concatMap g x),
+      rhs: concatMap (filter f . g) x,
+      name: Move filter,
+    }
+- warning:
+    { lhs: filter f (concat x), rhs: concatMap (filter f) x, name: Move filter }
+- warning:
+    {
+      lhs: mapMaybe f (concatMap g x),
+      rhs: concatMap (mapMaybe f . g) x,
+      name: Move mapMaybe,
+    }
+- warning:
+    {
+      lhs: mapMaybe f (concat x),
+      rhs: concatMap (mapMaybe f) x,
+      name: Move mapMaybe,
+    }
+- warning: { lhs: or (fmap p x), rhs: any p x }
+- warning: { lhs: or (p <$> x), rhs: any p x }
+- warning: { lhs: or (x <&> p), rhs: any p x }
+- warning: { lhs: and (fmap p x), rhs: all p x }
+- warning: { lhs: and (p <$> x), rhs: all p x }
+- warning: { lhs: and (x <&> p), rhs: all p x }
+- warning: { lhs: any f (fmap g x), rhs: any (f . g) x }
+- warning: { lhs: any f (g <$> x), rhs: any (f . g) x }
+- warning: { lhs: any f (x <&> g), rhs: any (f . g) x }
+- warning: { lhs: all f (fmap g x), rhs: all (f . g) x }
+- warning: { lhs: all f (g <$> x), rhs: all (f . g) x }
+- warning: { lhs: all f (x <&> g), rhs: all (f . g) x }
+- warning:
+    { lhs: foldr f z (fmap g x), rhs: foldr (f . g) z x, name: Fuse foldr/fmap }
+- warning:
+    { lhs: foldr f z (g <$> x), rhs: foldr (f . g) z x, name: Fuse foldr/<$> }
+- warning:
+    { lhs: foldr f z (x <&> g), rhs: foldr (f . g) z x, name: Fuse foldr/<&> }
+- warning: { lhs: fold (Data.Foldable.toList x), rhs: fold x }
+- warning: { lhs: foldMap f (Data.Foldable.toList x), rhs: foldMap f x }
+- warning: { lhs: foldMap' f (Data.Foldable.toList x), rhs: foldMap' f x }
+- warning: { lhs: foldr f z (Data.Foldable.toList x), rhs: foldr f z x }
+- warning: { lhs: foldr' f z (Data.Foldable.toList x), rhs: foldr' f z x }
+- warning: { lhs: foldl f z (Data.Foldable.toList x), rhs: foldl f z x }
+- warning: { lhs: foldl' f z (Data.Foldable.toList x), rhs: foldl' f z x }
+- warning: { lhs: foldr1 f (Data.Foldable.toList x), rhs: foldr1 f x }
+- warning: { lhs: foldl1 f (Data.Foldable.toList x), rhs: foldl1 f x }
+- warning: { lhs: null (Data.Foldable.toList x), rhs: null x }
+- warning: { lhs: length (Data.Foldable.toList x), rhs: length x }
+- warning: { lhs: elem y (Data.Foldable.toList x), rhs: elem y x }
+- warning: { lhs: notElem y (Data.Foldable.toList x), rhs: notElem y x }
+- warning: { lhs: maximum (Data.Foldable.toList x), rhs: maximum x }
+- warning: { lhs: minimum (Data.Foldable.toList x), rhs: minimum x }
+- warning: { lhs: maximumBy f (Data.Foldable.toList x), rhs: maximumBy f x }
+- warning: { lhs: minimumBy f (Data.Foldable.toList x), rhs: minimumBy f x }
+- warning: { lhs: sum (Data.Foldable.toList x), rhs: sum x }
+- warning: { lhs: product (Data.Foldable.toList x), rhs: product x }
+- warning: { lhs: and (Data.Foldable.toList x), rhs: and x }
+- warning: { lhs: or (Data.Foldable.toList x), rhs: or x }
+- warning: { lhs: all f (Data.Foldable.toList x), rhs: all f x }
+- warning: { lhs: any f (Data.Foldable.toList x), rhs: any f x }
+- warning: { lhs: find f (Data.Foldable.toList x), rhs: find f x }
+- warning: { lhs: concat (Data.Foldable.toList x), rhs: concat x }
+- warning: { lhs: concatMap f (Data.Foldable.toList x), rhs: concatMap f x }
+- warning: { lhs: foldrM f c (Data.Foldable.toList x), rhs: foldrM f c x }
+- warning: { lhs: foldlM f c (Data.Foldable.toList x), rhs: foldlM f c x }
+- warning: { lhs: traverse_ f (Data.Foldable.toList x), rhs: traverse_ f x }
+- warning: { lhs: for_ (Data.Foldable.toList x) f, rhs: for_ x f }
+- warning: { lhs: sequenceA_ (Data.Foldable.toList x), rhs: sequenceA_ x }
+- warning: { lhs: asum (Data.Foldable.toList x), rhs: asum x }
+- warning: { lhs: mapM_ f (Data.Foldable.toList x), rhs: mapM_ f x }
+- warning: { lhs: forM_ (Data.Foldable.toList x) f, rhs: forM_ x f }
+- warning: { lhs: sequence_ (Data.Foldable.toList x), rhs: sequence_ x }
+- warning: { lhs: msum (Data.Foldable.toList x), rhs: msum x }
+
+# STATE MONAD
+
+- warning: { lhs: f <$> Control.Monad.State.get, rhs: gets f }
+- warning: { lhs: Control.Monad.State.get <&> f, rhs: gets f }
+- warning: { lhs: fmap f  Control.Monad.State.get, rhs: gets f }
+- warning: { lhs: f <$> Control.Monad.State.gets g, rhs: gets (f . g) }
+- warning: { lhs: Control.Monad.State.gets g <&> f, rhs: gets (f . g) }
+- warning: { lhs: fmap f (Control.Monad.State.gets g), rhs: gets (f . g) }
+- warning: { lhs: f <$> Control.Monad.Reader.ask, rhs: asks f }
+- warning: { lhs: Control.Monad.Reader.ask <&> f, rhs: asks f }
+- warning: { lhs: fmap f Control.Monad.Reader.ask, rhs: asks f }
+- warning: { lhs: f <$> Control.Monad.Reader.asks g, rhs: asks (f . g) }
+- warning: { lhs: Control.Monad.Reader.asks g <&> f, rhs: asks (f . g) }
+- warning: { lhs: fmap f (Control.Monad.Reader.asks g), rhs: asks (f . g) }
+- warning: { lhs: fst (runState m s), rhs: evalState m s }
+- warning: { lhs: snd (runState m s), rhs: execState m s }
+
+# EVALUATE
+
+- warning: { lhs: True && x, rhs: x, name: Evaluate }
+- warning: { lhs: False && x, rhs: "False", name: Evaluate }
+- warning: { lhs: True || x, rhs: "True", name: Evaluate }
+- warning: { lhs: False || x, rhs: x, name: Evaluate }
+- warning: { lhs: not True, rhs: "False", name: Evaluate }
+- warning: { lhs: not False, rhs: "True", name: Evaluate }
+- warning: { lhs: Nothing >>= k, rhs: Nothing, name: Evaluate }
+- warning: { lhs: k =<< Nothing, rhs: Nothing, name: Evaluate }
+- warning: { lhs: either f g (Left x), rhs: f x, name: Evaluate }
+- warning: { lhs: either f g (Right y), rhs: g y, name: Evaluate }
+- warning: { lhs: "fst (x,y)", rhs: x, name: Evaluate }
+- warning: { lhs: "snd (x,y)", rhs: "y", name: Evaluate }
+- warning: { lhs: fromJust (Just x), rhs: x, name: Evaluate }
+- warning: { lhs: fromLeft y (Left x), rhs: x, name: Evaluate }
+- warning: { lhs: fromLeft y (Right x), rhs: "y", name: Evaluate }
+- warning: { lhs: fromRight y (Right x), rhs: x, name: Evaluate }
+- warning: { lhs: fromRight y (Left x), rhs: "y", name: Evaluate }
+- warning: { lhs: "head [x]", rhs: "x", name: Evaluate }
+- warning: { lhs: "last [x]", rhs: "x", name: Evaluate }
+- warning: { lhs: "tail [x]", rhs: "[]", name: Evaluate }
+- warning: { lhs: "init [x]", rhs: "[]", name: Evaluate }
+- warning: { lhs: "null [x]", rhs: "False", name: Evaluate }
+- warning: { lhs: "null []", rhs: "True", name: Evaluate }
+- warning: { lhs: 'null ""', rhs: "True", name: Evaluate }
+- warning: { lhs: "length []", rhs: "0", name: Evaluate }
+- warning: { lhs: 'length ""', rhs: "0", name: Evaluate }
+- warning: { lhs: "foldl f z []", rhs: z, name: Evaluate }
+- warning: { lhs: "foldr f z []", rhs: z, name: Evaluate }
+- warning: { lhs: "foldr1 f [x]", rhs: x, name: Evaluate }
+- warning: { lhs: "scanr f z []", rhs: "[z]", name: Evaluate }
+- warning: { lhs: "scanr1 f []", rhs: "[]", name: Evaluate }
+- warning: { lhs: "scanr1 f [x]", rhs: "[x]", name: Evaluate }
+- warning:
+    { lhs: "take n []", rhs: "[]", note: IncreasesLaziness, name: Evaluate }
+- warning:
+    { lhs: 'take n ""', rhs: '""', note: IncreasesLaziness, name: Evaluate }
+- warning:
+    { lhs: "drop n []", rhs: "[]", note: IncreasesLaziness, name: Evaluate }
+- warning:
+    { lhs: 'drop n ""', rhs: '""', note: IncreasesLaziness, name: Evaluate }
+- warning: { lhs: "takeWhile p []", rhs: "[]", name: Evaluate }
+- warning: { lhs: 'takeWhile p ""', rhs: '""', name: Evaluate }
+- warning: { lhs: "dropWhile p []", rhs: "[]", name: Evaluate }
+- warning: { lhs: 'dropWhile p ""', rhs: '""', name: Evaluate }
+- warning: { lhs: "span p []", rhs: "([],[])", name: Evaluate }
+- warning: { lhs: 'span p ""', rhs: '("","")', name: Evaluate }
+- warning: { lhs: 'lines ""', rhs: "[]", name: Evaluate }
+- warning: { lhs: "lines []", rhs: "[]", name: Evaluate }
+- warning: { lhs: "unwords []", rhs: '""', name: Evaluate }
+- warning: { lhs: x - 0, rhs: x, name: Evaluate }
+- warning: { lhs: x * 1, rhs: x, name: Evaluate }
+- warning: { lhs: x / 1, rhs: x, name: Evaluate }
+- warning: { lhs: "concat [a]", rhs: a, name: Evaluate }
+- warning: { lhs: "concat []", rhs: "[]", name: Evaluate }
+- warning: { lhs: "concatMap f [a]", rhs: f a, name: Evaluate }
+- warning: { lhs: "concatMap f []", rhs: "[]", name: Evaluate }
+- warning: { lhs: "zip [] []", rhs: "[]", name: Evaluate }
+- warning: { lhs: const x y, rhs: x, name: Evaluate }
+- warning:
+    {
+      lhs: any (const False),
+      rhs: const False,
+      note: IncreasesLaziness,
+      name: Evaluate,
+    }
+- warning:
+    {
+      lhs: all (const True),
+      rhs: const True,
+      note: IncreasesLaziness,
+      name: Evaluate,
+    }
+- warning: { lhs: "[] <> x", rhs: x, name: Evaluate }
+- warning: { lhs: '"" <> x', rhs: x, name: Evaluate }
+- warning: { lhs: "x <> []", rhs: x, name: Evaluate }
+- warning: { lhs: 'x <> ""', rhs: x, name: Evaluate }
+- warning: { lhs: "all f [a]", rhs: f a, name: Evaluate }
+- warning: { lhs: "all f []", rhs: "True", name: Evaluate }
+- warning: { lhs: "any f [a]", rhs: f a, name: Evaluate }
+- warning: { lhs: "any f []", rhs: "False", name: Evaluate }
+- warning: { lhs: "maximum [a]", rhs: a, name: Evaluate }
+- warning: { lhs: "minimum [a]", rhs: a, name: Evaluate }
+- warning: { lhs: "map f []", rhs: "[]", name: Evaluate }
+- warning: { lhs: "map f [a]", rhs: "[f a]", name: Evaluate }
+
+# FOLDABLE + TUPLES
+
+- warning: { lhs: "foldr   f z (x,b)", rhs: f b z, name: Using foldr on tuple }
+- warning: { lhs: "foldr'  f z (x,b)", rhs: f b z, name: Using foldr' on tuple }
+- warning: { lhs: "foldl   f z (x,b)", rhs: f z b, name: Using foldl on tuple }
+- warning: { lhs: "foldl'  f z (x,b)", rhs: f z b, name: Using foldl' on tuple }
+- warning: { lhs: "foldMap f   (x,b)", rhs: f b, name: Using foldMap on tuple }
+- warning: { lhs: "foldr1  f   (x,b)", rhs: b, name: Using foldr1 on tuple }
+- warning: { lhs: "foldl1  f   (x,b)", rhs: b, name: Using foldl1 on tuple }
+- warning: { lhs: "elem    e   (x,b)", rhs: e == b, name: Using elem on tuple }
+- warning: { lhs: "fold        (x,b)", rhs: b, name: Using fold on tuple }
+- warning: { lhs: "toList      (x,b)", rhs: b, name: Using toList on tuple }
+- warning: { lhs: "maximum     (x,b)", rhs: b, name: Using maximum on tuple }
+- warning: { lhs: "minimum     (x,b)", rhs: b, name: Using minimum on tuple }
+- warning:
+    { lhs: "notElem e   (x,b)", rhs: e /= b, name: Using notElem on tuple }
+- warning: { lhs: "sum         (x,b)", rhs: b, name: Using sum on tuple }
+- warning: { lhs: "product     (x,b)", rhs: b, name: Using product on tuple }
+- warning: { lhs: "concat      (x,b)", rhs: b, name: Using concat on tuple }
+- warning:
+    { lhs: "concatMap f (x,b)", rhs: f b, name: Using concatMap on tuple }
+- warning: { lhs: "and         (x,b)", rhs: b, name: Using and on tuple }
+- warning: { lhs: "or          (x,b)", rhs: b, name: Using or on tuple }
+- warning: { lhs: "any     f   (x,b)", rhs: f b, name: Using any on tuple }
+- warning: { lhs: "all     f   (x,b)", rhs: f b, name: Using all on tuple }
+
+- warning:
+    { lhs: "foldr   f z (x,y,b)", rhs: f b z, name: Using foldr on tuple }
+- warning:
+    { lhs: "foldr'  f z (x,y,b)", rhs: f b z, name: Using foldr' on tuple }
+- warning:
+    { lhs: "foldl   f z (x,y,b)", rhs: f z b, name: Using foldl on tuple }
+- warning:
+    { lhs: "foldl'  f z (x,y,b)", rhs: f z b, name: Using foldl' on tuple }
+- warning:
+    { lhs: "foldMap f   (x,y,b)", rhs: f b, name: Using foldMap on tuple }
+- warning: { lhs: "foldr1  f   (x,y,b)", rhs: b, name: Using foldr1 on tuple }
+- warning: { lhs: "foldl1  f   (x,y,b)", rhs: b, name: Using foldl1 on tuple }
+- warning:
+    { lhs: "elem    e   (x,y,b)", rhs: e == b, name: Using elem on tuple }
+- warning: { lhs: "fold        (x,y,b)", rhs: b, name: Using fold on tuple }
+- warning: { lhs: "toList      (x,y,b)", rhs: b, name: Using toList on tuple }
+- warning: { lhs: "maximum     (x,y,b)", rhs: b, name: Using maximum on tuple }
+- warning: { lhs: "minimum     (x,y,b)", rhs: b, name: Using minimum on tuple }
+- warning:
+    { lhs: "notElem e   (x,y,b)", rhs: e /= b, name: Using notElem on tuple }
+- warning: { lhs: "sum         (x,y,b)", rhs: b, name: Using sum on tuple }
+- warning: { lhs: "product     (x,y,b)", rhs: b, name: Using product on tuple }
+- warning: { lhs: "concat      (x,y,b)", rhs: b, name: Using concat on tuple }
+- warning:
+    { lhs: "concatMap f (x,y,b)", rhs: f b, name: Using concatMap on tuple }
+- warning: { lhs: "and         (x,y,b)", rhs: b, name: Using and on tuple }
+- warning: { lhs: "or          (x,y,b)", rhs: b, name: Using or on tuple }
+- warning: { lhs: "any     f   (x,y,b)", rhs: f b, name: Using any on tuple }
+- warning: { lhs: "all     f   (x,y,b)", rhs: f b, name: Using all on tuple }
+
+- warning:
+    { lhs: null x, rhs: "False", side: isTuple x, name: Using null on tuple }
+- warning:
+    { lhs: length x, rhs: "1", side: isTuple x, name: Using length on tuple }
+
+# MAP
+
+- warning: { lhs: "Data.Map.fromList []", rhs: Data.Map.empty }
+- warning: { lhs: "Data.Map.Lazy.fromList []", rhs: Data.Map.Lazy.empty }
+- warning: { lhs: "Data.Map.Strict.fromList []", rhs: Data.Map.Strict.empty }
+
+# group: lens
+
+- warning: { lhs: "(a ^. b) ^. c", rhs: "a ^. (b . c)" }
+- warning: { lhs: "fromJust (a ^? b)", rhs: "a ^?! b" }
+- warning: { lhs: "a .~ Just b", rhs: "a ?~ b" }
+- warning: { lhs: "(mapped %~ b) a", rhs: "a <&> b" }
+- warning: { lhs: "((mapped . b) %~ c) a", rhs: "a <&> b %~ c" }
+- warning: { lhs: "(mapped .~ b) a", rhs: "b <$ a" }
+- warning: { lhs: "ask <&> (^. a)", rhs: "view a" }
+- warning: { lhs: "view a <&> (^. b)", rhs: "view (a . b)" }
+
+# `at` pitfalls:
+
+- warning:
+    { lhs: "Control.Lens.at a . Control.Lens._Just", rhs: "Control.Lens.ix a" }
+- warning: { lhs: "Control.Lens.has (Control.Lens.at a)", rhs: "True" }
+- warning:
+    {
+      lhs: "Control.Lens.has (a . Control.Lens.at b)",
+      rhs: "Control.Lens.has a",
+    }
+- warning: { lhs: "Control.Lens.nullOf (Control.Lens.at a)", rhs: "False" }
+- warning:
+    {
+      lhs: "Control.Lens.nullOf (a . Control.Lens.at b)",
+      rhs: "Control.Lens.nullOf a",
+    }
+
+# group: use-lens
+
+- warning: { lhs: "either Just (const Nothing)", rhs: preview _Left }
+- warning: { lhs: "either (const Nothing) Just", rhs: preview _Right }
+
+# group: use-th-quotes
+
+- warning: { lhs: "TH.varE 'a", rhs: "[|a|]", name: Use TH quotation brackets }
+
+# group: quickcheck
+
+- warning: { lhs: "Test.QuickCheck.choose (x,x)", rhs: return x }
+- warning: { lhs: "Test.QuickCheck.chooseInt (x,x)", rhs: return x }
+- warning: { lhs: "Test.QuickCheck.chooseInteger (x,x)", rhs: return x }
+- warning: { lhs: "Test.QuickCheck.chooseBoundedIntegral (x,x)", rhs: return x }
+- warning: { lhs: "Test.QuickCheck.chooseEnum (x,x)", rhs: return x }
+- warning:
+    {
+      lhs: Control.Monad.join (Test.QuickCheck.elements l),
+      rhs: Test.QuickCheck.oneof l,
+    }
+- warning: { lhs: "Test.QuickCheck.elements [x]", rhs: "return x" }
+- warning: { lhs: "Test.QuickCheck.growingElements [x]", rhs: "return x" }
+- warning: { lhs: "Test.QuickCheck.oneof [x]", rhs: "x", name: Evaluate }
+- warning:
+    { lhs: "Test.QuickCheck.frequency [(a,x)]", rhs: "x", name: Evaluate }
+
+# group: generalise
+
+- warning: { lhs: map, rhs: fmap }
+- warning: { lhs: a ++ b, rhs: a <> b }
+- warning: { lhs: "sequence [a]", rhs: "pure <$> a" }
+- warning: { lhs: "x /= []", rhs: not (null x), name: Use null }
+- warning: { lhs: 'x /= ""', rhs: not (null x), name: Use null }
+- warning: { lhs: "[] /= x", rhs: not (null x), name: Use null }
+- warning: { lhs: '"" /= x', rhs: not (null x), name: Use null }
+- warning: { lhs: "maybe []", rhs: foldMap }
+
+# group: partial
+#
+# Warn on partial functions whose use can be avoided relatively easily.
+# These functions are in the base package, excluding IO and GHC modules.
+
+# Data.Bits
+
+- warning:
+    {
+      lhs: bitSize x,
+      rhs:
+        'case bitSizeMaybe x of Just n -> n; Nothing -> todo "handle Nothing
+        case of bitSizeMaybe"',
+      name: Avoid partial function,
+    }
+- warning: { lhs: shiftL x b, rhs: shift x b, name: Avoid partial function }
+- warning: { lhs: shiftR x b, rhs: shift x (-b), name: Avoid partial function }
+- warning:
+    { lhs: unsafeShiftL x b, rhs: shift x b, name: Avoid partial function }
+- warning:
+    { lhs: unsafeShiftR x b, rhs: shift x (-b), name: Avoid partial function }
+- warning: { lhs: rotateL x b, rhs: rotate x b, name: Avoid partial function }
+- warning:
+    { lhs: rotateR x b, rhs: rotate x (-b), name: Avoid partial function }
+
+# Data.List
+
+- warning:
+    {
+      lhs: head l,
+      rhs: 'case l of x:_ -> x; [] -> todo "handle empty case of list"',
+      name: Avoid partial function,
+    }
+- warning:
+    {
+      lhs: last l,
+      rhs: 'case reverse l of x:_ -> x; [] -> todo "handle empty case of list"',
+      name: Avoid partial function,
+    }
+- warning:
+    {
+      lhs: tail l,
+      rhs: 'case l of _:xs -> xs; [] -> todo "handle empty case of list"',
+      name: Avoid partial function,
+    }
+- warning:
+    {
+      lhs: init l,
+      rhs:
+        'case reverse l of _:xs -> reverse xs; [] -> todo "handle empty case of
+        list"',
+      name: Avoid partial function,
+    }
+- warning:
+    {
+      lhs: l !! n,
+      rhs: 'case drop n l of x:_ -> x; [] -> todo "handle empty case of list"',
+      name: Avoid partial function,
+    }
+
+# Data.List.NonEmpty
+
+- warning:
+    {
+      lhs: Data.List.NonEmpty.fromList l,
+      rhs:
+        'case nonEmpty l of Just xs -> xs; Nothing -> todo "handle empty case of
+        list"',
+      name: Avoid partial function,
+    }
+
+# Data.Maybe
+
+- warning:
+    {
+      lhs: fromJust v,
+      rhs:
+        'case v of Just x -> x; Nothing -> todo "handle Nothing case of Maybe
+        value"',
+      name: Avoid partial function,
+    }
+
+# group: dollar
+
+- warning: { lhs: a $ b $ c, rhs: a . b $ c }
+
+# group: future
+
+- warning: { lhs: return a, rhs: pure a }
+
+# group: strict
+
+- functions:
+    - { name: bifoldr1, within: [], message: "Avoid partial function" }
+    - { name: bifoldl1, within: [], message: "Avoid partial function" }
+    - { name: bimaximum, within: [], message: "Avoid partial function" }
+    - { name: biminimum, within: [], message: "Avoid partial function" }
+    - { name: bimaximumBy, within: [], message: "Avoid partial function" }
+    - { name: biminimumBy, within: [], message: "Avoid partial function" }
+    - { name: foldr1, within: [], message: "Avoid partial function" }
+    - { name: foldl1, within: [], message: "Avoid partial function" }
+    - { name: maximum, within: [], message: "Avoid partial function" }
+    - { name: minimum, within: [], message: "Avoid partial function" }
+    - { name: maximumBy, within: [], message: "Avoid partial function" }
+    - { name: minimumBy, within: [], message: "Avoid partial function" }
+    - { name: digitToInt, within: [], message: "Avoid partial function" }
+    - { name: intToDigit, within: [], message: "Avoid partial function" }
+    - { name: div', within: [], message: "Avoid partial function" }
+    - { name: mod', within: [], message: "Avoid partial function" }
+    - { name: divMod', within: [], message: "Avoid partial function" }
+    - { name: cycle, within: [], message: "Avoid partial function" }
+    - { name: "%", within: [], message: "Avoid partial function" }
+    # - { name: succ, within: [], message: "Avoid partial function" }
+    - { name: pred, within: [], message: "Avoid partial function" }
+    # - { name: toEnum, within: [], message: "Avoid partial function" }
+    # - { name: fromEnum, within: [], message: "Avoid partial function" }
+    - { name: quot, within: [], message: "Avoid partial function" }
+    - { name: rem, within: [], message: "Avoid partial function" }
+    - { name: div, within: [], message: "Avoid partial function" }
+    - { name: mod, within: [], message: "Avoid partial function" }
+    - { name: quotRem, within: [], message: "Avoid partial function" }
+    - { name: divMod, within: [], message: "Avoid partial function" }
+    - { name: unsafePerformIO, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeInterleaveIO,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeFixIO, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeLocalStateIO,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - {
+        name: unsafeDupablePerformIO,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeCoerce, within: [], message: "Avoid partial function" }
+    - { name: unsafeCoerce#, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeCoerceUnlifted,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeInsert, within: [], message: "Avoid partial function" }
+    - { name: unsafeFreeze, within: [], message: "Avoid partial function" }
+    - { name: unsafeSameArray, within: [], message: "Avoid partial function" }
+    - { name: unsafeThaw, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpdateM, within: [], message: "Avoid partial function" }
+    - { name: unsafeViaShow, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeTextWithoutNewlines,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeViaShow, within: [], message: "Avoid partial function" }
+    - { name: unsafePeekStyle, within: [], message: "Avoid partial function" }
+    - { name: unsafePopStyle, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeUniformFillMutableByteArray,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - {
+        name: unsafeUniformFillMutableByteArray,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeAccum, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccumulate, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccumulate_, within: [], message: "Avoid partial function" }
+    - { name: unsafeBackpermute, within: [], message: "Avoid partial function" }
+    - { name: unsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: unsafeDrop, within: [], message: "Avoid partial function" }
+    - { name: unsafeFreeze, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeFromArraySlice,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeHead, within: [], message: "Avoid partial function" }
+    - { name: unsafeHeadM, within: [], message: "Avoid partial function" }
+    - { name: unsafeIndex, within: [], message: "Avoid partial function" }
+    - { name: unsafeIndexM, within: [], message: "Avoid partial function" }
+    - { name: unsafeInit, within: [], message: "Avoid partial function" }
+    - { name: unsafeLast, within: [], message: "Avoid partial function" }
+    - { name: unsafeLastM, within: [], message: "Avoid partial function" }
+    - { name: unsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: unsafeTail, within: [], message: "Avoid partial function" }
+    - { name: unsafeTake, within: [], message: "Avoid partial function" }
+    - { name: unsafeThaw, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpd, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpdate, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpdate_, within: [], message: "Avoid partial function" }
+    - { name: unsafeFromList, within: [], message: "Avoid partial function" }
+    - { name: unsafeFromList, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccum, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccumulate, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccumulate_, within: [], message: "Avoid partial function" }
+    - { name: unsafeBackpermute, within: [], message: "Avoid partial function" }
+    - { name: unsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: unsafeDrop, within: [], message: "Avoid partial function" }
+    - { name: unsafeFreeze, within: [], message: "Avoid partial function" }
+    - { name: unsafeHead, within: [], message: "Avoid partial function" }
+    - { name: unsafeHeadM, within: [], message: "Avoid partial function" }
+    - { name: unsafeIndex, within: [], message: "Avoid partial function" }
+    - { name: unsafeIndexM, within: [], message: "Avoid partial function" }
+    - { name: unsafeInit, within: [], message: "Avoid partial function" }
+    - { name: unsafeLast, within: [], message: "Avoid partial function" }
+    - { name: unsafeLastM, within: [], message: "Avoid partial function" }
+    - { name: unsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: unsafeTail, within: [], message: "Avoid partial function" }
+    - { name: unsafeTake, within: [], message: "Avoid partial function" }
+    - { name: unsafeThaw, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpd, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpdate, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpdate_, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccum, within: [], message: "Avoid partial function" }
+    - { name: unsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: unsafeDrop, within: [], message: "Avoid partial function" }
+    - { name: unsafeExchange, within: [], message: "Avoid partial function" }
+    - { name: unsafeGrow, within: [], message: "Avoid partial function" }
+    - { name: unsafeGrowFront, within: [], message: "Avoid partial function" }
+    - { name: unsafeInit, within: [], message: "Avoid partial function" }
+    - { name: unsafeModify, within: [], message: "Avoid partial function" }
+    - { name: unsafeModifyM, within: [], message: "Avoid partial function" }
+    - { name: unsafeMove, within: [], message: "Avoid partial function" }
+    - { name: unsafeNew, within: [], message: "Avoid partial function" }
+    - { name: unsafeRead, within: [], message: "Avoid partial function" }
+    - { name: unsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: unsafeSwap, within: [], message: "Avoid partial function" }
+    - { name: unsafeTail, within: [], message: "Avoid partial function" }
+    - { name: unsafeTake, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpdate, within: [], message: "Avoid partial function" }
+    - { name: unsafeWrite, within: [], message: "Avoid partial function" }
+    - { name: unsafeInit, within: [], message: "Avoid partial function" }
+    - { name: unsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: unsafeTail, within: [], message: "Avoid partial function" }
+    - { name: unsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: unsafeDrop, within: [], message: "Avoid partial function" }
+    - { name: unsafeExchange, within: [], message: "Avoid partial function" }
+    - { name: unsafeGrow, within: [], message: "Avoid partial function" }
+    - { name: unsafeInit, within: [], message: "Avoid partial function" }
+    - { name: unsafeModify, within: [], message: "Avoid partial function" }
+    - { name: unsafeModifyM, within: [], message: "Avoid partial function" }
+    - { name: unsafeMove, within: [], message: "Avoid partial function" }
+    - { name: unsafeNew, within: [], message: "Avoid partial function" }
+    - { name: unsafeRead, within: [], message: "Avoid partial function" }
+    - { name: unsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: unsafeSwap, within: [], message: "Avoid partial function" }
+    - { name: unsafeTail, within: [], message: "Avoid partial function" }
+    - { name: unsafeTake, within: [], message: "Avoid partial function" }
+    - { name: unsafeWrite, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccum, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccumulate_, within: [], message: "Avoid partial function" }
+    - { name: unsafeBackpermute, within: [], message: "Avoid partial function" }
+    - { name: unsafeCast, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeCoerceVector,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: unsafeDrop, within: [], message: "Avoid partial function" }
+    - { name: unsafeFreeze, within: [], message: "Avoid partial function" }
+    - { name: unsafeHead, within: [], message: "Avoid partial function" }
+    - { name: unsafeHeadM, within: [], message: "Avoid partial function" }
+    - { name: unsafeIndex, within: [], message: "Avoid partial function" }
+    - { name: unsafeIndexM, within: [], message: "Avoid partial function" }
+    - { name: unsafeInit, within: [], message: "Avoid partial function" }
+    - { name: unsafeLast, within: [], message: "Avoid partial function" }
+    - { name: unsafeLastM, within: [], message: "Avoid partial function" }
+    - { name: unsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: unsafeTail, within: [], message: "Avoid partial function" }
+    - { name: unsafeTake, within: [], message: "Avoid partial function" }
+    - { name: unsafeThaw, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpd, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpdate_, within: [], message: "Avoid partial function" }
+    - { name: unsafeCast, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeCoerceMVector,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: unsafeDrop, within: [], message: "Avoid partial function" }
+    - { name: unsafeExchange, within: [], message: "Avoid partial function" }
+    - { name: unsafeGrow, within: [], message: "Avoid partial function" }
+    - { name: unsafeInit, within: [], message: "Avoid partial function" }
+    - { name: unsafeModify, within: [], message: "Avoid partial function" }
+    - { name: unsafeModifyM, within: [], message: "Avoid partial function" }
+    - { name: unsafeMove, within: [], message: "Avoid partial function" }
+    - { name: unsafeNew, within: [], message: "Avoid partial function" }
+    - { name: unsafeRead, within: [], message: "Avoid partial function" }
+    - { name: unsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: unsafeSwap, within: [], message: "Avoid partial function" }
+    - { name: unsafeTail, within: [], message: "Avoid partial function" }
+    - { name: unsafeTake, within: [], message: "Avoid partial function" }
+    - { name: unsafeWrite, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccum, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccumulate_, within: [], message: "Avoid partial function" }
+    - { name: unsafeBackpermute, within: [], message: "Avoid partial function" }
+    - { name: unsafeCast, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeCoerceVector,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: unsafeDrop, within: [], message: "Avoid partial function" }
+    - { name: unsafeFreeze, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeFromForeignPtr,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - {
+        name: unsafeFromForeignPtr0,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeHead, within: [], message: "Avoid partial function" }
+    - { name: unsafeHeadM, within: [], message: "Avoid partial function" }
+    - { name: unsafeIndex, within: [], message: "Avoid partial function" }
+    - { name: unsafeIndexM, within: [], message: "Avoid partial function" }
+    - { name: unsafeInit, within: [], message: "Avoid partial function" }
+    - { name: unsafeLast, within: [], message: "Avoid partial function" }
+    - { name: unsafeLastM, within: [], message: "Avoid partial function" }
+    - { name: unsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: unsafeTail, within: [], message: "Avoid partial function" }
+    - { name: unsafeTake, within: [], message: "Avoid partial function" }
+    - { name: unsafeThaw, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeToForeignPtr,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - {
+        name: unsafeToForeignPtr0,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeUpd, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpdate_, within: [], message: "Avoid partial function" }
+    - { name: unsafeWith, within: [], message: "Avoid partial function" }
+    - { name: unsafeCast, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeCoerceMVector,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: unsafeDrop, within: [], message: "Avoid partial function" }
+    - { name: unsafeExchange, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeFromForeignPtr,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - {
+        name: unsafeFromForeignPtr0,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeGrow, within: [], message: "Avoid partial function" }
+    - { name: unsafeInit, within: [], message: "Avoid partial function" }
+    - { name: unsafeModify, within: [], message: "Avoid partial function" }
+    - { name: unsafeModifyM, within: [], message: "Avoid partial function" }
+    - { name: unsafeMove, within: [], message: "Avoid partial function" }
+    - { name: unsafeNew, within: [], message: "Avoid partial function" }
+    - { name: unsafeRead, within: [], message: "Avoid partial function" }
+    - { name: unsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: unsafeSwap, within: [], message: "Avoid partial function" }
+    - { name: unsafeTail, within: [], message: "Avoid partial function" }
+    - { name: unsafeTake, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeToForeignPtr,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - {
+        name: unsafeToForeignPtr0,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeWith, within: [], message: "Avoid partial function" }
+    - { name: unsafeWrite, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccum, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccumulate, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccumulate_, within: [], message: "Avoid partial function" }
+    - { name: unsafeBackpermute, within: [], message: "Avoid partial function" }
+    - { name: unsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: unsafeDrop, within: [], message: "Avoid partial function" }
+    - { name: unsafeFreeze, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeFromArraySlice,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeHead, within: [], message: "Avoid partial function" }
+    - { name: unsafeHeadM, within: [], message: "Avoid partial function" }
+    - { name: unsafeIndex, within: [], message: "Avoid partial function" }
+    - { name: unsafeIndexM, within: [], message: "Avoid partial function" }
+    - { name: unsafeInit, within: [], message: "Avoid partial function" }
+    - { name: unsafeLast, within: [], message: "Avoid partial function" }
+    - { name: unsafeLastM, within: [], message: "Avoid partial function" }
+    - { name: unsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: unsafeTail, within: [], message: "Avoid partial function" }
+    - { name: unsafeTake, within: [], message: "Avoid partial function" }
+    - { name: unsafeThaw, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpd, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpdate, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpdate_, within: [], message: "Avoid partial function" }
+    - { name: unsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: unsafeDrop, within: [], message: "Avoid partial function" }
+    - { name: unsafeExchange, within: [], message: "Avoid partial function" }
+    - { name: unsafeGrow, within: [], message: "Avoid partial function" }
+    - { name: unsafeInit, within: [], message: "Avoid partial function" }
+    - { name: unsafeModify, within: [], message: "Avoid partial function" }
+    - { name: unsafeModifyM, within: [], message: "Avoid partial function" }
+    - { name: unsafeMove, within: [], message: "Avoid partial function" }
+    - { name: unsafeNew, within: [], message: "Avoid partial function" }
+    - { name: unsafeRead, within: [], message: "Avoid partial function" }
+    - { name: unsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: unsafeSwap, within: [], message: "Avoid partial function" }
+    - { name: unsafeTail, within: [], message: "Avoid partial function" }
+    - { name: unsafeTake, within: [], message: "Avoid partial function" }
+    - { name: unsafeWrite, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccum, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccumulate, within: [], message: "Avoid partial function" }
+    - { name: unsafeAccumulate_, within: [], message: "Avoid partial function" }
+    - { name: unsafeBackpermute, within: [], message: "Avoid partial function" }
+    - { name: unsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: unsafeDrop, within: [], message: "Avoid partial function" }
+    - { name: unsafeFreeze, within: [], message: "Avoid partial function" }
+    - { name: unsafeHead, within: [], message: "Avoid partial function" }
+    - { name: unsafeHeadM, within: [], message: "Avoid partial function" }
+    - { name: unsafeIndex, within: [], message: "Avoid partial function" }
+    - { name: unsafeIndexM, within: [], message: "Avoid partial function" }
+    - { name: unsafeInit, within: [], message: "Avoid partial function" }
+    - { name: unsafeLast, within: [], message: "Avoid partial function" }
+    - { name: unsafeLastM, within: [], message: "Avoid partial function" }
+    - { name: unsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: unsafeTail, within: [], message: "Avoid partial function" }
+    - { name: unsafeTake, within: [], message: "Avoid partial function" }
+    - { name: unsafeThaw, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpd, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpdate, within: [], message: "Avoid partial function" }
+    - { name: unsafeUpdate_, within: [], message: "Avoid partial function" }
+    - { name: unsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: unsafeDrop, within: [], message: "Avoid partial function" }
+    - { name: unsafeExchange, within: [], message: "Avoid partial function" }
+    - { name: unsafeGrow, within: [], message: "Avoid partial function" }
+    - { name: unsafeInit, within: [], message: "Avoid partial function" }
+    - { name: unsafeModify, within: [], message: "Avoid partial function" }
+    - { name: unsafeModifyM, within: [], message: "Avoid partial function" }
+    - { name: unsafeMove, within: [], message: "Avoid partial function" }
+    - { name: unsafeNew, within: [], message: "Avoid partial function" }
+    - { name: unsafeRead, within: [], message: "Avoid partial function" }
+    - { name: unsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: unsafeSwap, within: [], message: "Avoid partial function" }
+    - { name: unsafeTail, within: [], message: "Avoid partial function" }
+    - { name: unsafeTake, within: [], message: "Avoid partial function" }
+    - { name: unsafeWrite, within: [], message: "Avoid partial function" }
+    - { name: unsafeViaShow, within: [], message: "Avoid partial function" }
+    - { name: unsafePartsOf, within: [], message: "Avoid partial function" }
+    - { name: unsafePartsOf', within: [], message: "Avoid partial function" }
+    - { name: unsafeSingular, within: [], message: "Avoid partial function" }
+    - { name: unsafePartsOf, within: [], message: "Avoid partial function" }
+    - { name: unsafePartsOf', within: [], message: "Avoid partial function" }
+    - { name: unsafeSingular, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeDupableInterleave,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeIOToPrim, within: [], message: "Avoid partial function" }
+    - { name: unsafeInlineIO, within: [], message: "Avoid partial function" }
+    - { name: unsafeInlinePrim, within: [], message: "Avoid partial function" }
+    - { name: unsafeInlineST, within: [], message: "Avoid partial function" }
+    - { name: unsafeInterleave, within: [], message: "Avoid partial function" }
+    - { name: unsafePrimToIO, within: [], message: "Avoid partial function" }
+    - { name: unsafePrimToPrim, within: [], message: "Avoid partial function" }
+    - { name: unsafePrimToST, within: [], message: "Avoid partial function" }
+    - { name: unsafeSTToPrim, within: [], message: "Avoid partial function" }
+    - { name: unsafeFreezeArray, within: [], message: "Avoid partial function" }
+    - { name: unsafeThawArray, within: [], message: "Avoid partial function" }
+    - {
+        name: unsafeFreezeByteArray,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - {
+        name: unsafeThawByteArray,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - {
+        name: unsafeFreezePrimArray,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - {
+        name: unsafeThawPrimArray,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - {
+        name: unsafeFreezeSmallArray,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - {
+        name: unsafeThawSmallArray,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - {
+        name: unsafeProcessHandle,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: unsafeVacuous, within: [], message: "Avoid partial function" }
+    - { name: unsafeVacuousM, within: [], message: "Avoid partial function" }
+    - {
+        name: defaultUnsafeUniformFillMutableByteArray,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: basicUnsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeFreeze, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeIndexM, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeThaw, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeGrow, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeMove, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeNew, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeRead, within: [], message: "Avoid partial function" }
+    - {
+        name: basicUnsafeReplicate,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: basicUnsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeWrite, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeCopy, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeGrow, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeMove, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeNew, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeRead, within: [], message: "Avoid partial function" }
+    - {
+        name: basicUnsafeReplicate,
+        within: [],
+        message: "Avoid partial function",
+      }
+    - { name: basicUnsafeSlice, within: [], message: "Avoid partial function" }
+    - { name: basicUnsafeWrite, within: [], message: "Avoid partial function" }
+    - { name: iunsafePartsOf, within: [], message: "Avoid partial function" }
+    - { name: iunsafePartsOf', within: [], message: "Avoid partial function" }
+    - { name: iunsafePartsOf, within: [], message: "Avoid partial function" }
+    - { name: iunsafePartsOf', within: [], message: "Avoid partial function" }
+    - { name: _Unsafe, within: [], message: "Avoid partial function" }
