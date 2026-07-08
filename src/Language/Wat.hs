@@ -21,6 +21,19 @@ instance EncodeWat Text where
 
 --------------------------------
 
+data Sexp = Sexp Text [Sexp]
+  deriving (Generic, Eq, Show, Ord)
+
+instance EncodeWat Sexp where
+  encodeWat (Sexp t es)
+    | null es = reflow t
+    | otherwise = parens $ reflow t <+> (hcat . punctuate " " . fmap encodeWat) es
+
+class EncodeWatSexp a where
+  encodeWatSexp :: a -> Sexp
+
+--------------------------------
+
 -- # 6 WebAssembly Text Format (WAT)
 
 -- ## 6.3 Values
