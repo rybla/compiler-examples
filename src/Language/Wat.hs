@@ -30,6 +30,9 @@ class EncodeWatSexp a where
 class EncodeWatSexpList a where
   encodeWatSexpList :: a -> [Sexp]
 
+instance (EncodeWatSexp a) => EncodeWatSexpList (Maybe a) where
+  encodeWatSexpList = foldMap (singleton . encodeWatSexp)
+
 --------------------------------
 
 -- # 6 WebAssembly Text Format (WAT)
@@ -258,7 +261,7 @@ data ExternalType
 -- ### 6.4.15 Type Uses
 
 -- | Type uses reference type definitions, optionally inlining parameter and result declarations.
-data TypeUse = TypeUse TypeIdx [Param] [Result]
+data TypeUse = TypeUse TypeIdx
   deriving (Generic, Eq, Show, Ord)
 
 -- ## 6.5 Instructions
@@ -1029,17 +1032,14 @@ limitsSexpList :: Limits -> [Sexp]
 limitsSexpList (Limits n mM) = encodeWatSexp n : foldMap (\m -> [Leaf (Text.pack (show m))]) mM
 
 memTypeSexpList :: MemType -> [Sexp]
-memTypeSexpList (MemType atM lims) = foldMap (singleton . encodeWatSexp) atM <> limitsSexpList lims
+memTypeSexpList (MemType atM lims) = encodeWatSexpList atM <> limitsSexpList lims
 
 tableTypeSexpList :: TableType -> [Sexp]
-tableTypeSexpList (TableType atM lims rt) = foldMap (singleton . encodeWatSexp) atM <> (limitsSexpList lims <> [encodeWatSexp rt])
-
-typeUseSexpList :: TypeUse -> [Sexp]
-typeUseSexpList (TypeUse ti ps rs) = Node "type" [encodeWatSexp ti] : (fmap encodeWatSexp ps <> fmap encodeWatSexp rs)
+tableTypeSexpList (TableType atM lims rt) = encodeWatSexpList atM <> (limitsSexpList lims <> [encodeWatSexp rt])
 
 blockTypeSexpList :: BlockType -> [Sexp]
-blockTypeSexpList (Result_BlockType rM) = foldMap (singleton . encodeWatSexp) rM
-blockTypeSexpList (TypeUse_BlockType tu) = typeUseSexpList tu
+blockTypeSexpList (Result_BlockType rM) = encodeWatSexpList rM
+blockTypeSexpList (TypeUse_BlockType tu) = [encodeWatSexp tu]
 
 memArgSexpList :: MemArg -> [Sexp]
 memArgSexpList (MemArg offsetM alignM) = foldMap (\o -> [Leaf ("offset=" <> Text.pack (show o))]) offsetM <> foldMap (\a -> [Leaf ("align=" <> Text.pack (show a))]) alignM
@@ -1088,7 +1088,7 @@ instance EncodeWatSexp Name where
   encodeWatSexp (Name t) = Leaf (Text.show t)
 
 instance EncodeWatSexp Identifier where
-  encodeWatSexp (Identifier t) = Leaf (Text.show t)
+  encodeWatSexp (Identifier t) = Leaf ("$" <> t)
 
 instance EncodeWatSexp NumType where
   encodeWatSexp I32_NumType = Leaf "i32"
@@ -1121,7 +1121,7 @@ instance EncodeWatSexp Null where
   encodeWatSexp Null = Leaf "null"
 
 instance EncodeWatSexp RefType where
-  encodeWatSexp (RefType nullM ht) = Node "ref" (foldMap (singleton . encodeWatSexp) nullM <> [encodeWatSexp ht])
+  encodeWatSexp (RefType nullM ht) = Node "ref" (encodeWatSexpList nullM <> [encodeWatSexp ht])
 
 instance EncodeWatSexp ValType where
   encodeWatSexp (NumType_ValType nt) = encodeWatSexp nt
@@ -1134,10 +1134,10 @@ instance EncodeWatSexp CompType where
   encodeWatSexp (Func_CompType ps rs) = Node "func" (fmap encodeWatSexp ps <> fmap encodeWatSexp rs)
 
 instance EncodeWatSexp Field where
-  encodeWatSexp (Field idM ft) = Node "field" (foldMap (singleton . encodeWatSexp) idM <> [encodeWatSexp ft])
+  encodeWatSexp (Field idM ft) = Node "field" (encodeWatSexpList idM <> [encodeWatSexp ft])
 
 instance EncodeWatSexp Param where
-  encodeWatSexp (Param idM vt) = Node "param" (foldMap (singleton . encodeWatSexp) idM <> [encodeWatSexp vt])
+  encodeWatSexp (Param idM vt) = Node "param" (encodeWatSexpList idM <> [encodeWatSexp vt])
 
 instance EncodeWatSexp Result where
   encodeWatSexp (Result vt) = Node "result" [encodeWatSexp vt]
@@ -1160,10 +1160,10 @@ instance EncodeWatSexp Final where
   encodeWatSexp Final = Leaf "final"
 
 instance EncodeWatSexp SubType where
-  encodeWatSexp (SubType fM tis ct) = Node "sub" (foldMap (singleton . encodeWatSexp) fM <> (fmap encodeWatSexp tis <> [encodeWatSexp ct]))
+  encodeWatSexp (SubType fM tis ct) = Node "sub" (encodeWatSexpList fM <> (fmap encodeWatSexp tis <> [encodeWatSexp ct]))
 
 instance EncodeWatSexp TypeDef where
-  encodeWatSexp (TypeDef idM st) = Node "type" (foldMap (singleton . encodeWatSexp) idM <> [encodeWatSexp st])
+  encodeWatSexp (TypeDef idM st) = Node "type" (encodeWatSexpList idM <> [encodeWatSexp st])
 
 instance EncodeWatSexp RecType where
   encodeWatSexp (RecType tds) = Node "rec" (fmap encodeWatSexp tds)
@@ -1175,8 +1175,8 @@ instance EncodeWatSexp AddrType where
 instance EncodeWatSexpList Limits where
   encodeWatSexpList = limitsSexpList
 
-instance EncodeWatSexpList TagType where
-  encodeWatSexpList (TagType tu) = encodeWatSexpList tu
+instance EncodeWatSexp TagType where
+  encodeWatSexp (TagType tu) = encodeWatSexp tu
 
 instance EncodeWatSexp GlobalType where
   encodeWatSexp (GlobalType isMut vt) =
@@ -1191,17 +1191,17 @@ instance EncodeWatSexpList TableType where
   encodeWatSexpList = tableTypeSexpList
 
 instance EncodeWatSexp ExternalType where
-  encodeWatSexp (Tag_ExternalType idM jt) = Node "tag" (foldMap (singleton . encodeWatSexp) idM <> encodeWatSexpList jt)
-  encodeWatSexp (Global_ExternalType idM gt) = Node "global" (foldMap (singleton . encodeWatSexp) idM <> [encodeWatSexp gt])
-  encodeWatSexp (Memory_ExternalType idM mt) = Node "memory" (foldMap (singleton . encodeWatSexp) idM <> memTypeSexpList mt)
-  encodeWatSexp (Table_ExternalType idM tt) = Node "table" (foldMap (singleton . encodeWatSexp) idM <> tableTypeSexpList tt)
-  encodeWatSexp (Func_ExternalType idM tu) = Node "func" (foldMap (singleton . encodeWatSexp) idM <> encodeWatSexpList tu)
+  encodeWatSexp (Tag_ExternalType idM jt) = Node "tag" (encodeWatSexpList idM <> [encodeWatSexp jt])
+  encodeWatSexp (Global_ExternalType idM gt) = Node "global" (encodeWatSexpList idM <> [encodeWatSexp gt])
+  encodeWatSexp (Memory_ExternalType idM mt) = Node "memory" (encodeWatSexpList idM <> memTypeSexpList mt)
+  encodeWatSexp (Table_ExternalType idM tt) = Node "table" (encodeWatSexpList idM <> tableTypeSexpList tt)
+  encodeWatSexp (Func_ExternalType idM tu) = Node "func" (encodeWatSexpList idM <> [encodeWatSexp tu])
 
-instance EncodeWatSexpList TypeUse where
-  encodeWatSexpList = typeUseSexpList
+instance EncodeWatSexp TypeUse where
+  encodeWatSexp (TypeUse ti) = Node "type" [encodeWatSexp ti]
 
 instance EncodeWatSexpList Label where
-  encodeWatSexpList (Label idM) = maybe mempty (singleton . encodeWatSexp) idM
+  encodeWatSexpList (Label idM) = encodeWatSexpList idM
 
 instance EncodeWatSexpList BlockType where
   encodeWatSexpList = blockTypeSexpList
@@ -1214,13 +1214,13 @@ instance EncodeWatSexp Catch where
 
 instance EncodeWatSexp BlockInstr where
   encodeWatSexp (Block_BlockInstr idM bt body _) =
-    Node "block" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
+    Node "block" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
   encodeWatSexp (Loop_BlockInstr idM bt body _) =
-    Node "loop" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
+    Node "loop" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
   encodeWatSexp (If_BlockInstr idM bt thenBody _ elseBody _) =
-    Node "if" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> [Node "then" (fmap encodeWatSexp thenBody)] <> [Node "else" (fmap encodeWatSexp elseBody) | not (null elseBody)]))
+    Node "if" (encodeWatSexpList idM <> (blockTypeSexpList bt <> [Node "then" (fmap encodeWatSexp thenBody)] <> [Node "else" (fmap encodeWatSexp elseBody) | not (null elseBody)]))
   encodeWatSexp (TryTable_BlockInstr idM bt cs body _) =
-    Node "try_table" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> fmap encodeWatSexp cs <> fmap encodeWatSexp body))
+    Node "try_table" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp cs <> fmap encodeWatSexp body))
 
 instance EncodeWatSexpList MemArg where
   encodeWatSexpList = memArgSexpList
@@ -1239,8 +1239,8 @@ instance EncodeWatSexp PlainInstr where
   encodeWatSexp Return_PlainInstr = Leaf "return"
   encodeWatSexp (Call_PlainInstr f) = Node "call" [encodeWatSexp f]
   encodeWatSexp (ReturnCall_PlainInstr f) = Node "return_call" [encodeWatSexp f]
-  encodeWatSexp (CallIndirect_PlainInstr t tu) = Node "call_indirect" (encodeWatSexp t : typeUseSexpList tu)
-  encodeWatSexp (ReturnCallIndirect_PlainInstr t tu) = Node "return_call_indirect" (encodeWatSexp t : typeUseSexpList tu)
+  encodeWatSexp (CallIndirect_PlainInstr t tu) = Node "call_indirect" [encodeWatSexp t, encodeWatSexp tu]
+  encodeWatSexp (ReturnCallIndirect_PlainInstr t tu) = Node "return_call_indirect" [encodeWatSexp t, encodeWatSexp tu]
   encodeWatSexp (LocalGet_PlainInstr l) = Node "local.get" [encodeWatSexp l]
   encodeWatSexp (LocalSet_PlainInstr l) = Node "local.set" [encodeWatSexp l]
   encodeWatSexp (LocalTee_PlainInstr l) = Node "local.tee" [encodeWatSexp l]
@@ -1725,20 +1725,20 @@ instance EncodeWatSexp FoldedInstr where
     let Node op kids = encodeWatSexp p
      in Node op (kids <> fmap encodeWatSexp inputs)
   encodeWatSexp (Block_FoldedInstr idM bt body) =
-    Node "block" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
+    Node "block" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
   encodeWatSexp (Loop_FoldedInstr idM bt body) =
-    Node "loop" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
+    Node "loop" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
   encodeWatSexp (If_FoldedInstr idM bt inputs thenBody elseBody) =
-    Node "if" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> fmap encodeWatSexp inputs <> [Node "then" (fmap encodeWatSexp thenBody)] <> [Node "else" (fmap encodeWatSexp elseBody) | not (null elseBody)]))
+    Node "if" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp inputs <> [Node "then" (fmap encodeWatSexp thenBody)] <> [Node "else" (fmap encodeWatSexp elseBody) | not (null elseBody)]))
   encodeWatSexp (TryTable_FoldedInstr idM bt cs body) =
-    Node "try_table" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> fmap encodeWatSexp cs <> fmap encodeWatSexp body))
+    Node "try_table" (encodeWatSexpList idM <> (blockTypeSexpList bt <> fmap encodeWatSexp cs <> fmap encodeWatSexp body))
 
 instance EncodeWatSexpList Expr where
   encodeWatSexpList = exprSexpList
 
 instance EncodeWatSexp Idx where
   encodeWatSexp (Index_Idx n) = encodeWatSexp n
-  encodeWatSexp (Identifier_Idx (Identifier t)) = Leaf ("$" <> t)
+  encodeWatSexp (Identifier_Idx i) = encodeWatSexp i
 
 instance EncodeWatSexp TypeIdx where
   encodeWatSexp (TypeIdx i) = encodeWatSexp i
@@ -1777,28 +1777,28 @@ instance EncodeWatSexp Type where
   encodeWatSexp (Type rt) = encodeWatSexp rt
 
 instance EncodeWatSexp Tag where
-  encodeWatSexp (Tag idM tt) = Node "tag" (foldMap (singleton . encodeWatSexp) idM <> encodeWatSexpList tt)
+  encodeWatSexp (Tag idM tt) = Node "tag" (encodeWatSexpList idM <> [encodeWatSexp tt])
 
 instance EncodeWatSexp Global where
-  encodeWatSexp (Global idM gt e) = Node "global" (foldMap (singleton . encodeWatSexp) idM <> [encodeWatSexp gt] <> encodeWatSexpList e)
+  encodeWatSexp (Global idM gt e) = Node "global" (encodeWatSexpList idM <> [encodeWatSexp gt] <> encodeWatSexpList e)
 
 instance EncodeWatSexp Mem where
-  encodeWatSexp (Mem idM mt) = Node "memory" (foldMap (singleton . encodeWatSexp) idM <> memTypeSexpList mt)
+  encodeWatSexp (Mem idM mt) = Node "memory" (encodeWatSexpList idM <> memTypeSexpList mt)
 
 instance EncodeWatSexp Table where
-  encodeWatSexp (Table idM tt e) = Node "table" (foldMap (singleton . encodeWatSexp) idM <> (tableTypeSexpList tt <> encodeWatSexpList e))
+  encodeWatSexp (Table idM tt e) = Node "table" (encodeWatSexpList idM <> (tableTypeSexpList tt <> encodeWatSexpList e))
 
 instance EncodeWatSexp Local where
-  encodeWatSexp (Local idM vt) = Node "local" (foldMap (singleton . encodeWatSexp) idM <> [encodeWatSexp vt])
+  encodeWatSexp (Local idM vt) = Node "local" (encodeWatSexpList idM <> [encodeWatSexp vt])
 
 instance EncodeWatSexp Func where
-  encodeWatSexp (Func idM tuM ls e) = Node "func" (foldMap (singleton . encodeWatSexp) idM <> (foldMap encodeWatSexpList tuM <> fmap encodeWatSexp ls <> exprSexpList e))
+  encodeWatSexp (Func idM tuM ls e) = Node "func" (encodeWatSexpList idM <> (encodeWatSexpList tuM <> fmap encodeWatSexp ls <> exprSexpList e))
 
 instance EncodeWatSexpList DataMode where
   encodeWatSexpList = dataModeSexpList
 
 instance EncodeWatSexp DataSegment where
-  encodeWatSexp (DataSegment idM mode bs) = Node "data" (foldMap (singleton . encodeWatSexp) idM <> (dataModeSexpList mode <> [encodeWatSexp bs]))
+  encodeWatSexp (DataSegment idM mode bs) = Node "data" (encodeWatSexpList idM <> (dataModeSexpList mode <> [encodeWatSexp bs]))
 
 instance EncodeWatSexpList ElemMode where
   encodeWatSexpList = elemModeSexpList
@@ -1810,7 +1810,7 @@ instance EncodeWatSexpList ElemList where
   encodeWatSexpList = elemListSexpList
 
 instance EncodeWatSexp ElemSegment where
-  encodeWatSexp (ElemSegment idM mode el) = Node "elem" (foldMap (singleton . encodeWatSexp) idM <> (elemModeSexpList mode <> elemListSexpList el))
+  encodeWatSexp (ElemSegment idM mode el) = Node "elem" (encodeWatSexpList idM <> (elemModeSexpList mode <> elemListSexpList el))
 
 instance EncodeWatSexp Start where
   encodeWatSexp (Start f) = Node "start" [encodeWatSexp f]
@@ -1842,4 +1842,4 @@ instance EncodeWatSexp Decl where
   encodeWatSexp (Export_Decl e) = encodeWatSexp e
 
 instance EncodeWatSexp Module where
-  encodeWatSexp (Module idM decls) = Node "module" (foldMap (singleton . encodeWatSexp) idM <> fmap encodeWatSexp decls)
+  encodeWatSexp (Module idM decls) = Node "module" (encodeWatSexpList idM <> fmap encodeWatSexp decls)

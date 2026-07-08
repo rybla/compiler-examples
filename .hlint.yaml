@@ -31,6 +31,8 @@
 
 - warning: { lhs: "Node t []", rhs: "Leaf t" }
 
+- warning: { lhs: "a : [b]", rhs: "[a, b]" }
+
 # group: default
 
 # I/O

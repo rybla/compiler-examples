@@ -13,34 +13,30 @@ import Test.Tasty.Golden (goldenVsString)
 spec :: TestTree
 spec =
   testGroup "Wat" $
-    [ goldenVsString "x1" "asset/golden/Wat/x1.golden.txt" . return . encodeDocUtf8 . pretty . encodeWatSexp $
+    [ goldenVsString "x3" "asset/golden/Wat/x3.golden.wat" . return . encodeDocUtf8 . pretty . encodeWatSexp $
         Module
           Nothing
           [ Export_Decl $
               Export
                 (Name "return_default")
                 (Func_ExternIdx $ FuncIdx $ Identifier_Idx $ Identifier $ "return_default"),
+            Type_Decl $
+              Type . RecType $
+                [ TypeDef
+                    (Just . Identifier $ "return_default_type")
+                    ( SubType
+                        Nothing
+                        []
+                        ( Func_CompType
+                            []
+                            [Result . NumType_ValType $ I32_NumType]
+                        )
+                    )
+                ],
             Func_Decl $
               Func
                 (Just . Identifier $ "return_default")
-                Nothing
-                [Local (Just . Identifier $ "x") (NumType_ValType I32_NumType)]
-                ( Expr
-                    [ Plain_Instr . LocalGet_PlainInstr . LocalIdx . Identifier_Idx . Identifier $ "x"
-                    ]
-                )
-          ],
-      goldenVsString "x1_sexp" "asset/golden/Wat/x1_sexp.golden.txt" . return . encodeDocUtf8 . pretty . encodeWatSexp $
-        Module
-          Nothing
-          [ Export_Decl $
-              Export
-                (Name "return_default")
-                (Func_ExternIdx $ FuncIdx $ Identifier_Idx $ Identifier $ "return_default"),
-            Func_Decl $
-              Func
-                (Just . Identifier $ "return_default")
-                Nothing
+                (Just . TypeUse . TypeIdx . Identifier_Idx . Identifier $ "return_default_type")
                 [Local (Just . Identifier $ "x") (NumType_ValType I32_NumType)]
                 ( Expr
                     [ Plain_Instr . LocalGet_PlainInstr . LocalIdx . Identifier_Idx . Identifier $ "x"
