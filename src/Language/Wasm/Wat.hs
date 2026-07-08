@@ -426,8 +426,8 @@ data PlainInstr
   | AnyConvertExtern_PlainInstr
   | ExternConvertAny_PlainInstr
   | -- ### 6.5.9 Numeric Const Instructions
-    I32Const_PlainInstr Integer
-  | I64Const_PlainInstr Integer
+    I32Const_PlainInstr Int
+  | I64Const_PlainInstr Int
   | F32Const_PlainInstr Float
   | F64Const_PlainInstr Float
   | -- ### 6.5.9 Numeric Operators
@@ -1074,6 +1074,9 @@ instance EncodeWatSexp Text where
 
 instance EncodeWatSexp Natural where
   encodeWatSexp n = Leaf (Text.show n)
+
+instance EncodeWatSexp Int where
+  encodeWatSexp i = Leaf (Text.show i)
 
 instance EncodeWatSexp Integer where
   encodeWatSexp i = Leaf (Text.show i)

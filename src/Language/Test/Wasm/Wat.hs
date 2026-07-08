@@ -11,7 +11,7 @@ import Test.Tasty (TestTree, testGroup)
 spec :: TestTree
 spec =
   testGroup "Wat" $
-    [ testWat "x1-return_default" dp $
+    [ testWatModule "x1-return_default" dp $
         Module
           Nothing
           [ Type_Decl $
