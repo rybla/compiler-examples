@@ -2,9 +2,15 @@
   (rec
     (type $return_default_type (;0;) (sub (func (result i32))))
   )
-  (export "return_default" (func $return_default))
+  (rec
+    (type $main_type (;1;) (sub (func (result i32))))
+  )
+  (export "main" (func $main))
   (func $return_default (;0;) (type $return_default_type) (result i32)
     (local $x i32)
     local.get $x
+  )
+  (func $main (;1;) (type $main_type) (result i32)
+    call $return_default
   )
 )

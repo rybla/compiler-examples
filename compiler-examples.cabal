@@ -31,6 +31,7 @@ library
       Language.Wasm.Wat
       Language.Wasm.Wat.Utilities
       Lib
+      Utilities
       Utilities.Unsafe
   other-modules:
       Paths_compiler_examples
@@ -64,6 +65,7 @@ library
     , parsec
     , prettyprinter
     , process
+    , process-extras
     , tasty
     , tasty-golden
     , tasty-hunit
@@ -109,6 +111,7 @@ executable compiler-examples-exe
     , parsec
     , prettyprinter
     , process
+    , process-extras
     , tasty
     , tasty-golden
     , tasty-hunit
@@ -155,6 +158,7 @@ test-suite compiler-examples-test
     , parsec
     , prettyprinter
     , process
+    , process-extras
     , tasty
     , tasty-golden
     , tasty-hunit
