@@ -1537,8 +1537,8 @@ instance EncodeWat FoldedInstr where
   encodeWat (Plain_FoldedInstr p inputs) = parens $ encodeWat p <> (hcat . punctuate " " . fmap encodeWat) inputs
   encodeWat (Block_FoldedInstr idM bt body) = parens $ "block" <+> maybe mempty encodeWat idM <+> encodeWat bt <+> (if null body then mempty else encodeWat (Instrs body))
   encodeWat (Loop_FoldedInstr idM bt body) = parens $ "loop" <+> maybe mempty encodeWat idM <+> encodeWat bt <+> (if null body then mempty else encodeWat (Instrs body))
-  encodeWat (If_FoldedInstr idM bt inputs thenBody elseBody) = parens $ "if" <+> maybe mempty encodeWat idM <+> encodeWat bt <> hcat ((punctuate " " . fmap encodeWat) inputs) <+> parens ("then" <+> (if null thenBody then mempty else encodeWat (Instrs thenBody))) <+> (if null elseBody then mempty else parens $ "else" <+> encodeWat (Instrs elseBody))
-  encodeWat (TryTable_FoldedInstr idM bt cs body) = parens $ "try_table" <+> maybe mempty encodeWat idM <+> encodeWat bt <> hcat ((punctuate " " . fmap encodeWat) cs) <+> (if null body then mempty else encodeWat (Instrs body))
+  encodeWat (If_FoldedInstr idM bt inputs thenBody elseBody) = parens $ "if" <+> maybe mempty encodeWat idM <+> encodeWat bt <> (hcat . punctuate " " . fmap encodeWat) inputs <+> parens ("then" <+> (if null thenBody then mempty else encodeWat (Instrs thenBody))) <+> (if null elseBody then mempty else parens $ "else" <+> encodeWat (Instrs elseBody))
+  encodeWat (TryTable_FoldedInstr idM bt cs body) = parens $ "try_table" <+> maybe mempty encodeWat idM <+> encodeWat bt <> (hcat . punctuate " " . fmap encodeWat) cs <+> (if null body then mempty else encodeWat (Instrs body))
 
 -- ### Expressions
 
@@ -1688,7 +1688,7 @@ data Func = Func (Maybe Identifier) TypeUse [Local] Expr
   deriving (Generic, Eq, Show, Ord)
 
 instance EncodeWat Func where
-  encodeWat (Func idM tu ls e) = parens $ "func" <+> maybe mempty encodeWat idM <+> encodeWat tu <> hcat ((punctuate " " . fmap encodeWat) ls) <+> encodeWat e
+  encodeWat (Func idM tu ls e) = parens $ "func" <+> maybe mempty encodeWat idM <+> encodeWat tu <> (hcat . punctuate " " . fmap encodeWat) ls <+> encodeWat e
 
 -- ### 6.6.8 Data Segments
 
