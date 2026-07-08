@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Language.Test.Spec
+      Language.Test.Wat
       Language.Wat
       Lib
       Utilities.Unsafe
