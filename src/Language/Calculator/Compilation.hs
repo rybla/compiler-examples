@@ -17,7 +17,7 @@ compile tm =
                 []
                 ( Func_CompType
                     []
-                    [Result . NumType_ValType $ I32_NumType]
+                    [Result . NumType_ValType $ I64_NumType]
                 )
             )
         ],
@@ -34,6 +34,6 @@ compile tm =
     ]
 
 compileTm :: Tm -> [Instr]
-compileTm (Literal n) = [Plain_Instr (I32Const_PlainInstr n)]
-compileTm (Operation Plus t1 t2) = compileTm t1 <> compileTm t2 <> [Plain_Instr I32Add_PlainInstr]
-compileTm (Operation Times t1 t2) = compileTm t1 <> compileTm t2 <> [Plain_Instr I32Mul_PlainInstr]
+compileTm (Literal n) = [Plain_Instr (I64Const_PlainInstr n)]
+compileTm (Operation Plus t1 t2) = compileTm t1 <> compileTm t2 <> [Plain_Instr I64Add_PlainInstr]
+compileTm (Operation Times t1 t2) = compileTm t1 <> compileTm t2 <> [Plain_Instr I64Mul_PlainInstr]
