@@ -1875,7 +1875,7 @@
 
 # group: dollar
 
-- warning: { lhs: a $ b $ c, rhs: a . b $ c }
+- error: { lhs: a $ b $ c, rhs: a . b $ c }
 
 # group: future
 
