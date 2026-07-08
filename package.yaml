@@ -1,6 +1,6 @@
-name: haskell-agentic-stack-template
+name: compiler-examples
 version: 0.1.0.0
-github: "<author_github_username>/haskell-agentic-stack-template"
+github: "<author_github_username>/compiler-examples"
 license: BSD-3-Clause
 author: "<author_name>"
 maintainer: "<author_email>"
@@ -19,7 +19,7 @@ extra-source-files:
 # common to point users to the README.md file.
 description:
   Please see the README on GitHub at
-  <https://github.com/<author_github_username>/haskell-agentic-stack-template#readme>
+  <https://github.com/<author_github_username>/compiler-examples#readme>
 
 dependencies:
   - base >= 4.7 && < 5
@@ -40,6 +40,10 @@ dependencies:
   - conduit
   - aeson
   - QuickCheck
+  - tasty
+  - tasty-hunit
+  - tasty-golden
+  - tasty-quickcheck
 
 language: GHC2024
 
@@ -66,7 +70,7 @@ library:
   source-dirs: src
 
 executables:
-  haskell-agentic-stack-template-exe:
+  compiler-examples-exe:
     main: Main.hs
     source-dirs: app
     ghc-options:
@@ -74,17 +78,13 @@ executables:
       - -rtsopts
       - -with-rtsopts=-N
     dependencies:
-      - haskell-agentic-stack-template
+      - compiler-examples
 
 tests:
-  haskell-agentic-stack-template-test:
+  compiler-examples-test:
     main: Spec.hs
     source-dirs: test
     ghc-options:
       - -rtsopts
     dependencies:
-      - haskell-agentic-stack-template
-      - tasty
-      - tasty-hunit
-      - tasty-golden
-      - tasty-quickcheck
+      - compiler-examples

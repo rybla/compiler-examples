@@ -1,4 +1,4 @@
-# Changelog for `haskell-agentic-stack-template`
+# Changelog for `compiler-examples`
 
 All notable changes to this project will be documented in this file.
 
