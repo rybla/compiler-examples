@@ -1,0 +1,1 @@
+(module (export "return_default" (func $return_default)) (func "return_default" (local "x" i32) (local.get $x)))

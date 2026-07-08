@@ -1,7 +1,7 @@
 # ignore
 
 - ignore: { name: "Use newtype instead of data" }
-- ignore: { name: "Eta reduce" }
+# - ignore: { name: "Eta reduce" }
 
 # custom
 
@@ -26,6 +26,10 @@
 
 - warning:
     { name: "todo", lhs: "todo $ s", rhs: "replace with actual implementation" }
+
+- warning: { lhs: "\\i -> [f i]", rhs: "singleton . f" }
+
+- warning: { lhs: "Node t []", rhs: "Leaf t" }
 
 # group: default
 

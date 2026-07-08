@@ -29,6 +29,23 @@ spec =
                     [ Plain_Instr . LocalGet_PlainInstr . LocalIdx . Identifier_Idx . Identifier $ "x"
                     ]
                 )
+          ],
+      goldenVsString "x1_sexp" "asset/golden/Wat/x1_sexp.golden.txt" . return . encodeDocUtf8 . encodeWat . encodeWatSexp $
+        Module
+          Nothing
+          [ Export_Decl $
+              Export
+                (Name "return_default")
+                (Func_ExternIdx $ FuncIdx $ Identifier_Idx $ Identifier $ "return_default"),
+            Func_Decl $
+              Func
+                (Just . Identifier $ "return_default")
+                Nothing
+                [Local (Just . Identifier $ "x") (NumType_ValType I32_NumType)]
+                ( Expr
+                    [ Plain_Instr . LocalGet_PlainInstr . LocalIdx . Identifier_Idx . Identifier $ "x"
+                    ]
+                )
           ]
     ]
 

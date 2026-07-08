@@ -4,6 +4,7 @@
 module Language.Wat where
 
 import Data.ByteString (ByteString)
+import Data.List (singleton)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.Generics (Generic)
@@ -21,16 +22,21 @@ instance EncodeWat Text where
 
 --------------------------------
 
-data Sexp = Sexp Text [Sexp]
+data Sexp = Node Text [Sexp]
   deriving (Generic, Eq, Show, Ord)
 
+pattern Leaf :: Text -> Sexp
+pattern Leaf t = Node t []
+
 instance EncodeWat Sexp where
-  encodeWat (Sexp t es)
-    | null es = reflow t
-    | otherwise = parens $ reflow t <+> (hcat . punctuate " " . fmap encodeWat) es
+  encodeWat (Leaf t) = reflow t
+  encodeWat (Node t es) = parens $ reflow t <+> (hcat . punctuate " " . fmap encodeWat) es
 
 class EncodeWatSexp a where
   encodeWatSexp :: a -> Sexp
+
+class EncodeWatSexpList a where
+  encodeWatSexpList :: a -> [Sexp]
 
 --------------------------------
 
@@ -1815,3 +1821,472 @@ data Module = Module (Maybe Identifier) [Decl]
 
 instance EncodeWat Module where
   encodeWat (Module idM decls) = parens $ "module" <+> maybe mempty encodeWat idM <+> (if null decls then mempty else hsep (fmap encodeWat decls))
+
+--------------------------------
+-- EncodeWatSexp Instances and Helpers
+--------------------------------
+
+limitsSexpList :: Limits -> [Sexp]
+limitsSexpList (Limits n mM) = encodeWatSexp n : foldMap (\m -> [Leaf (Text.pack (show m))]) mM
+
+memTypeSexpList :: MemType -> [Sexp]
+memTypeSexpList (MemType atM lims) = foldMap (singleton . encodeWatSexp) atM <> limitsSexpList lims
+
+tableTypeSexpList :: TableType -> [Sexp]
+tableTypeSexpList (TableType atM lims rt) = foldMap (singleton . encodeWatSexp) atM <> (limitsSexpList lims <> [encodeWatSexp rt])
+
+typeUseSexpList :: TypeUse -> [Sexp]
+typeUseSexpList (TypeUse ti ps rs) = Node "type" [encodeWatSexp ti] : (fmap encodeWatSexp ps <> fmap encodeWatSexp rs)
+
+blockTypeSexpList :: BlockType -> [Sexp]
+blockTypeSexpList (Result_BlockType rM) = foldMap (singleton . encodeWatSexp) rM
+blockTypeSexpList (TypeUse_BlockType tu) = typeUseSexpList tu
+
+memArgSexpList :: MemArg -> [Sexp]
+memArgSexpList (MemArg offsetM alignM) = foldMap (\o -> [Leaf ("offset=" <> Text.pack (show o))]) offsetM <> foldMap (\a -> [Leaf ("align=" <> Text.pack (show a))]) alignM
+
+exprSexpList :: Expr -> [Sexp]
+exprSexpList (Expr is) = fmap encodeWatSexp is
+
+instrsSexpList :: Instrs -> [Sexp]
+instrsSexpList (Instrs is) = fmap encodeWatSexp is
+
+elemListSexpList :: ElemList -> [Sexp]
+elemListSexpList (ElemList rt es) =
+  encodeWatSexp rt : fmap encodeWatSexp es
+
+dataModeSexpList :: DataMode -> [Sexp]
+dataModeSexpList Passive_DataMode = []
+dataModeSexpList (Active_DataMode x e) = [Node "memory" [encodeWatSexp x], Node "offset" (exprSexpList e)]
+
+elemModeSexpList :: ElemMode -> [Sexp]
+elemModeSexpList Passive_ElemMode = []
+elemModeSexpList (Active_ElemMode x e) = [Node "table" [encodeWatSexp x], Node "offset" (exprSexpList e)]
+elemModeSexpList Declare_ElemMode = [Leaf "declare"]
+
+encMemSexp :: Text -> MemIdx -> MemArg -> Sexp
+encMemSexp op m arg = Node op (encodeWatSexp m : memArgSexpList arg)
+
+encMemLaneSexp :: Text -> MemIdx -> MemArg -> LaneIdx -> Sexp
+encMemLaneSexp op m arg lane = Node op (encodeWatSexp m : (memArgSexpList arg <> [encodeWatSexp lane]))
+
+instance EncodeWatSexp Text where
+  encodeWatSexp = Leaf
+
+instance EncodeWatSexp Natural where
+  encodeWatSexp n = Leaf (Text.show n)
+
+instance EncodeWatSexp Integer where
+  encodeWatSexp i = Leaf (Text.show i)
+
+instance EncodeWatSexp Float where
+  encodeWatSexp f = Leaf (Text.show f)
+
+instance EncodeWatSexp ByteString where
+  encodeWatSexp bs = Leaf (Text.show bs)
+
+instance EncodeWatSexp Name where
+  encodeWatSexp (Name t) = Leaf (Text.show t)
+
+instance EncodeWatSexp Identifier where
+  encodeWatSexp (Identifier t) = Leaf (Text.show t)
+
+instance EncodeWatSexp NumType where
+  encodeWatSexp I32_NumType = Leaf "i32"
+  encodeWatSexp I64_NumType = Leaf "i64"
+  encodeWatSexp F32_NumType = Leaf "f32"
+  encodeWatSexp F64_NumType = Leaf "f64"
+
+instance EncodeWatSexp VecType where
+  encodeWatSexp V128_VecType = Leaf "v128"
+
+instance EncodeWatSexp AbsHeapType where
+  encodeWatSexp Any_AbsHeapType = Leaf "any"
+  encodeWatSexp Eq_AbsHeapType = Leaf "eq"
+  encodeWatSexp I31_AbsHeapType = Leaf "i31"
+  encodeWatSexp Struct_AbsHeapType = Leaf "struct"
+  encodeWatSexp Array_AbsHeapType = Leaf "array"
+  encodeWatSexp None_AbsHeapType = Leaf "none"
+  encodeWatSexp Func_AbsHeapType = Leaf "func"
+  encodeWatSexp NoFunc_AbsHeapType = Leaf "nofunc"
+  encodeWatSexp Exn_AbsHeapType = Leaf "exn"
+  encodeWatSexp NoExn_AbsHeapType = Leaf "noexn"
+  encodeWatSexp Extern_AbsHeapType = Leaf "extern"
+  encodeWatSexp NoExtern_AbsHeapType = Leaf "noextern"
+
+instance EncodeWatSexp HeapType where
+  encodeWatSexp (AbsHeapType_HeapType aht) = encodeWatSexp aht
+  encodeWatSexp (TypeIdx_HeapType ti) = encodeWatSexp ti
+
+instance EncodeWatSexp Null where
+  encodeWatSexp Null = Leaf "null"
+
+instance EncodeWatSexp RefType where
+  encodeWatSexp (RefType nullM ht) = Node "ref" (foldMap (singleton . encodeWatSexp) nullM <> [encodeWatSexp ht])
+
+instance EncodeWatSexp ValType where
+  encodeWatSexp (NumType_ValType nt) = encodeWatSexp nt
+  encodeWatSexp (VecType_ValType vt) = encodeWatSexp vt
+  encodeWatSexp (RefType_ValType rt) = encodeWatSexp rt
+
+instance EncodeWatSexp CompType where
+  encodeWatSexp (Struct_CompType fs) = Node "struct" (fmap encodeWatSexp fs)
+  encodeWatSexp (Array_CompType ft) = Node "array" [encodeWatSexp ft]
+  encodeWatSexp (Func_CompType ps rs) = Node "func" (fmap encodeWatSexp ps <> fmap encodeWatSexp rs)
+
+instance EncodeWatSexp Field where
+  encodeWatSexp (Field idM ft) = Node "field" (foldMap (singleton . encodeWatSexp) idM <> [encodeWatSexp ft])
+
+instance EncodeWatSexp Param where
+  encodeWatSexp (Param idM vt) = Node "param" (foldMap (singleton . encodeWatSexp) idM <> [encodeWatSexp vt])
+
+instance EncodeWatSexp Result where
+  encodeWatSexp (Result vt) = Node "result" [encodeWatSexp vt]
+
+instance EncodeWatSexp FieldType where
+  encodeWatSexp (FieldType isMut st) =
+    if isMut
+      then Node "mut" [encodeWatSexp st]
+      else encodeWatSexp st
+
+instance EncodeWatSexp StorageType where
+  encodeWatSexp (ValType_StorageType vt) = encodeWatSexp vt
+  encodeWatSexp (PackType_StorageType pt) = encodeWatSexp pt
+
+instance EncodeWatSexp PackType where
+  encodeWatSexp I8_PackType = Leaf "i8"
+  encodeWatSexp I16_PackType = Leaf "i16"
+
+instance EncodeWatSexp Final where
+  encodeWatSexp Final = Leaf "final"
+
+instance EncodeWatSexp SubType where
+  encodeWatSexp (SubType fM tis ct) = Node "sub" (foldMap (singleton . encodeWatSexp) fM <> (fmap encodeWatSexp tis <> [encodeWatSexp ct]))
+
+instance EncodeWatSexp TypeDef where
+  encodeWatSexp (TypeDef idM st) = Node "type" (foldMap (singleton . encodeWatSexp) idM <> [encodeWatSexp st])
+
+instance EncodeWatSexp RecType where
+  encodeWatSexp (RecType tds) = Node "rec" (fmap encodeWatSexp tds)
+
+instance EncodeWatSexp AddrType where
+  encodeWatSexp I32_AddrType = Leaf "i32"
+  encodeWatSexp I64_AddrType = Leaf "i64"
+
+instance EncodeWatSexpList Limits where
+  encodeWatSexpList = limitsSexpList
+
+instance EncodeWatSexpList TagType where
+  encodeWatSexpList (TagType tu) = encodeWatSexpList tu
+
+instance EncodeWatSexp GlobalType where
+  encodeWatSexp (GlobalType isMut vt) =
+    if isMut
+      then Node "mut" [encodeWatSexp vt]
+      else encodeWatSexp vt
+
+instance EncodeWatSexpList MemType where
+  encodeWatSexpList = memTypeSexpList
+
+instance EncodeWatSexpList TableType where
+  encodeWatSexpList = tableTypeSexpList
+
+instance EncodeWatSexp ExternalType where
+  encodeWatSexp (Tag_ExternalType idM jt) = Node "tag" (foldMap (singleton . encodeWatSexp) idM <> encodeWatSexpList jt)
+  encodeWatSexp (Global_ExternalType idM gt) = Node "global" (foldMap (singleton . encodeWatSexp) idM <> [encodeWatSexp gt])
+  encodeWatSexp (Memory_ExternalType idM mt) = Node "memory" (foldMap (singleton . encodeWatSexp) idM <> memTypeSexpList mt)
+  encodeWatSexp (Table_ExternalType idM tt) = Node "table" (foldMap (singleton . encodeWatSexp) idM <> tableTypeSexpList tt)
+  encodeWatSexp (Func_ExternalType idM tu) = Node "func" (foldMap (singleton . encodeWatSexp) idM <> encodeWatSexpList tu)
+
+instance EncodeWatSexpList TypeUse where
+  encodeWatSexpList = typeUseSexpList
+
+instance EncodeWatSexpList Label where
+  encodeWatSexpList (Label idM) = maybe mempty (singleton . encodeWatSexp) idM
+
+instance EncodeWatSexpList BlockType where
+  encodeWatSexpList = blockTypeSexpList
+
+instance EncodeWatSexp Catch where
+  encodeWatSexp (Catch tx l) = Node "catch" [encodeWatSexp tx, encodeWatSexp l]
+  encodeWatSexp (CatchRef tx l) = Node "catch_ref" [encodeWatSexp tx, encodeWatSexp l]
+  encodeWatSexp (CatchAll l) = Node "catch_all" [encodeWatSexp l]
+  encodeWatSexp (CatchAllRef l) = Node "catch_all_ref" [encodeWatSexp l]
+
+instance EncodeWatSexp BlockInstr where
+  encodeWatSexp (Block_BlockInstr idM bt body _) =
+    Node "block" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
+  encodeWatSexp (Loop_BlockInstr idM bt body _) =
+    Node "loop" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
+  encodeWatSexp (If_BlockInstr idM bt thenBody _ elseBody _) =
+    Node "if" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> [Node "then" (fmap encodeWatSexp thenBody)] <> [Node "else" (fmap encodeWatSexp elseBody) | not (null elseBody)]))
+  encodeWatSexp (TryTable_BlockInstr idM bt cs body _) =
+    Node "try_table" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> fmap encodeWatSexp cs <> fmap encodeWatSexp body))
+
+instance EncodeWatSexpList MemArg where
+  encodeWatSexpList = memArgSexpList
+
+instance EncodeWatSexp LaneIdx where
+  encodeWatSexp (LaneIdx n) = encodeWatSexp n
+
+instance EncodeWatSexp PlainInstr where
+  encodeWatSexp Unreachable_PlainInstr = Leaf "unreachable"
+  encodeWatSexp Nop_PlainInstr = Leaf "nop"
+  encodeWatSexp Drop_PlainInstr = Leaf "drop"
+  encodeWatSexp (Select_PlainInstr rsM) = Node "select" (foldMap (fmap encodeWatSexp) rsM)
+  encodeWatSexp (Br_PlainInstr l) = Node "br" [encodeWatSexp l]
+  encodeWatSexp (BrIf_PlainInstr l) = Node "br_if" [encodeWatSexp l]
+  encodeWatSexp (BrTable_PlainInstr ls l) = Node "br_table" (fmap encodeWatSexp ls <> [encodeWatSexp l])
+  encodeWatSexp Return_PlainInstr = Leaf "return"
+  encodeWatSexp (Call_PlainInstr f) = Node "call" [encodeWatSexp f]
+  encodeWatSexp (ReturnCall_PlainInstr f) = Node "return_call" [encodeWatSexp f]
+  encodeWatSexp (CallIndirect_PlainInstr t tu) = Node "call_indirect" (encodeWatSexp t : typeUseSexpList tu)
+  encodeWatSexp (ReturnCallIndirect_PlainInstr t tu) = Node "return_call_indirect" (encodeWatSexp t : typeUseSexpList tu)
+  encodeWatSexp (LocalGet_PlainInstr l) = Node "local.get" [encodeWatSexp l]
+  encodeWatSexp (LocalSet_PlainInstr l) = Node "local.set" [encodeWatSexp l]
+  encodeWatSexp (LocalTee_PlainInstr l) = Node "local.tee" [encodeWatSexp l]
+  encodeWatSexp (GlobalGet_PlainInstr g) = Node "global.get" [encodeWatSexp g]
+  encodeWatSexp (GlobalSet_PlainInstr g) = Node "global.set" [encodeWatSexp g]
+  encodeWatSexp (TableGet_PlainInstr t) = Node "table.get" [encodeWatSexp t]
+  encodeWatSexp (TableSet_PlainInstr t) = Node "table.set" [encodeWatSexp t]
+  encodeWatSexp (TableSize_PlainInstr t) = Node "table.size" [encodeWatSexp t]
+  encodeWatSexp (TableGrow_PlainInstr t) = Node "table.grow" [encodeWatSexp t]
+  encodeWatSexp (TableFill_PlainInstr t) = Node "table.fill" [encodeWatSexp t]
+  encodeWatSexp (TableCopy_PlainInstr t1 t2) = Node "table.copy" [encodeWatSexp t1, encodeWatSexp t2]
+  encodeWatSexp (TableInit_PlainInstr t e) = Node "table.init" [encodeWatSexp t, encodeWatSexp e]
+  encodeWatSexp (ElemDrop_PlainInstr e) = Node "elem.drop" [encodeWatSexp e]
+  encodeWatSexp (I32Load_PlainInstr m arg) = encMemSexp "i32.load" m arg
+  encodeWatSexp (I64Load_PlainInstr m arg) = encMemSexp "i64.load" m arg
+  encodeWatSexp (F32Load_PlainInstr m arg) = encMemSexp "f32.load" m arg
+  encodeWatSexp (F64Load_PlainInstr m arg) = encMemSexp "f64.load" m arg
+  encodeWatSexp (I32Load8S_PlainInstr m arg) = encMemSexp "i32.load8_s" m arg
+  encodeWatSexp (I32Load8U_PlainInstr m arg) = encMemSexp "i32.load8_u" m arg
+  encodeWatSexp (I32Load16S_PlainInstr m arg) = encMemSexp "i32.load16_s" m arg
+  encodeWatSexp (I32Load16U_PlainInstr m arg) = encMemSexp "i32.load16_u" m arg
+  encodeWatSexp (I64Load8S_PlainInstr m arg) = encMemSexp "i64.load8_s" m arg
+  encodeWatSexp (I64Load8U_PlainInstr m arg) = encMemSexp "i64.load8_u" m arg
+  encodeWatSexp (I64Load16S_PlainInstr m arg) = encMemSexp "i64.load16_s" m arg
+  encodeWatSexp (I64Load16U_PlainInstr m arg) = encMemSexp "i64.load16_u" m arg
+  encodeWatSexp (I64Load32S_PlainInstr m arg) = encMemSexp "i64.load32_s" m arg
+  encodeWatSexp (I64Load32U_PlainInstr m arg) = encMemSexp "i64.load32_u" m arg
+  encodeWatSexp (V128Load_PlainInstr m arg) = encMemSexp "v128.load" m arg
+  encodeWatSexp (V128Load8x8S_PlainInstr m arg) = encMemSexp "v128.load8x8_s" m arg
+  encodeWatSexp (V128Load8x8U_PlainInstr m arg) = encMemSexp "v128.load8x8_u" m arg
+  encodeWatSexp (V128Load16x4S_PlainInstr m arg) = encMemSexp "v128.load16x4_s" m arg
+  encodeWatSexp (V128Load16x4U_PlainInstr m arg) = encMemSexp "v128.load16x4_u" m arg
+  encodeWatSexp (V128Load32x2S_PlainInstr m arg) = encMemSexp "v128.load32x2_s" m arg
+  encodeWatSexp (V128Load32x2U_PlainInstr m arg) = encMemSexp "v128.load32x2_u" m arg
+  encodeWatSexp (V128Load8Splat_PlainInstr m arg) = encMemSexp "v128.load8_splat" m arg
+  encodeWatSexp (V128Load16Splat_PlainInstr m arg) = encMemSexp "v128.load16_splat" m arg
+  encodeWatSexp (V128Load32Splat_PlainInstr m arg) = encMemSexp "v128.load32_splat" m arg
+  encodeWatSexp (V128Load64Splat_PlainInstr m arg) = encMemSexp "v128.load64_splat" m arg
+  encodeWatSexp (V128Load32Zero_PlainInstr m arg) = encMemSexp "v128.load32_zero" m arg
+  encodeWatSexp (V128Load64Zero_PlainInstr m arg) = encMemSexp "v128.load64_zero" m arg
+  encodeWatSexp (V128Load8Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.load8_lane" m arg lane
+  encodeWatSexp (V128Load16Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.load16_lane" m arg lane
+  encodeWatSexp (V128Load32Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.load32_lane" m arg lane
+  encodeWatSexp (V128Load64Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.load64_lane" m arg lane
+  encodeWatSexp (I32Store_PlainInstr m arg) = encMemSexp "i32.store" m arg
+  encodeWatSexp (I64Store_PlainInstr m arg) = encMemSexp "i64.store" m arg
+  encodeWatSexp (F32Store_PlainInstr m arg) = encMemSexp "f32.store" m arg
+  encodeWatSexp (F64Store_PlainInstr m arg) = encMemSexp "f64.store" m arg
+  encodeWatSexp (I32Store8_PlainInstr m arg) = encMemSexp "i32.store8" m arg
+  encodeWatSexp (I32Store16_PlainInstr m arg) = encMemSexp "i32.store16" m arg
+  encodeWatSexp (I64Store8_PlainInstr m arg) = encMemSexp "i64.store8" m arg
+  encodeWatSexp (I64Store16_PlainInstr m arg) = encMemSexp "i64.store16" m arg
+  encodeWatSexp (I64Store32_PlainInstr m arg) = encMemSexp "i64.store32" m arg
+  encodeWatSexp (V128Store_PlainInstr m arg) = encMemSexp "v128.store" m arg
+  encodeWatSexp (V128Store8Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.store8_lane" m arg lane
+  encodeWatSexp (V128Store16Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.store16_lane" m arg lane
+  encodeWatSexp (V128Store32Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.store32_lane" m arg lane
+  encodeWatSexp (V128Store64Lane_PlainInstr m arg lane) = encMemLaneSexp "v128.store64_lane" m arg lane
+  encodeWatSexp (MemorySize_PlainInstr m) = Node "memory.size" [encodeWatSexp m]
+  encodeWatSexp (MemoryGrow_PlainInstr m) = Node "memory.grow" [encodeWatSexp m]
+  encodeWatSexp (MemoryFill_PlainInstr m) = Node "memory.fill" [encodeWatSexp m]
+  encodeWatSexp (MemoryCopy_PlainInstr m1 m2) = Node "memory.copy" [encodeWatSexp m1, encodeWatSexp m2]
+  encodeWatSexp (MemoryInit_PlainInstr m d) = Node "memory.init" [encodeWatSexp m, encodeWatSexp d]
+  encodeWatSexp (DataDrop_PlainInstr d) = Node "data.drop" [encodeWatSexp d]
+  encodeWatSexp (RefNull_PlainInstr ht) = Node "ref.null" [encodeWatSexp ht]
+  encodeWatSexp (RefFunc_PlainInstr f) = Node "ref.func" [encodeWatSexp f]
+  encodeWatSexp RefIsNull_PlainInstr = Leaf "ref.is_null"
+  encodeWatSexp RefAsNonNull_PlainInstr = Leaf "ref.as_non_null"
+  encodeWatSexp RefEq_PlainInstr = Leaf "ref.eq"
+  encodeWatSexp (RefTest_PlainInstr rt) = Node "ref.test" [encodeWatSexp rt]
+  encodeWatSexp (RefCast_PlainInstr rt) = Node "ref.cast" [encodeWatSexp rt]
+  encodeWatSexp RefI31_PlainInstr = Leaf "ref.i31"
+  encodeWatSexp I31GetS_PlainInstr = Leaf "i31.get_s"
+  encodeWatSexp I31GetU_PlainInstr = Leaf "i31.get_u"
+  encodeWatSexp (StructNew_PlainInstr t) = Node "struct.new" [encodeWatSexp t]
+  encodeWatSexp (StructNewDefault_PlainInstr t) = Node "struct.new_default" [encodeWatSexp t]
+  encodeWatSexp (StructGet_PlainInstr t f) = Node "struct.get" [encodeWatSexp t, encodeWatSexp f]
+  encodeWatSexp (StructGetS_PlainInstr t f) = Node "struct.get_s" [encodeWatSexp t, encodeWatSexp f]
+  encodeWatSexp (StructGetU_PlainInstr t f) = Node "struct.get_u" [encodeWatSexp t, encodeWatSexp f]
+  encodeWatSexp (StructSet_PlainInstr t f) = Node "struct.set" [encodeWatSexp t, encodeWatSexp f]
+  encodeWatSexp (ArrayNew_PlainInstr t) = Node "array.new" [encodeWatSexp t]
+  encodeWatSexp (ArrayNewDefault_PlainInstr t) = Node "array.new_default" [encodeWatSexp t]
+  encodeWatSexp (ArrayNewFixed_PlainInstr t n) = Node "array.new_fixed" [encodeWatSexp t, encodeWatSexp n]
+  encodeWatSexp (ArrayNewData_PlainInstr t d) = Node "array.new_data" [encodeWatSexp t, encodeWatSexp d]
+  encodeWatSexp (ArrayNewElem_PlainInstr t e) = Node "array.new_elem" [encodeWatSexp t, encodeWatSexp e]
+  encodeWatSexp (ArrayGet_PlainInstr t) = Node "array.get" [encodeWatSexp t]
+  encodeWatSexp (ArrayGetS_PlainInstr t) = Node "array.get_s" [encodeWatSexp t]
+  encodeWatSexp (ArrayGetU_PlainInstr t) = Node "array.get_u" [encodeWatSexp t]
+  encodeWatSexp (ArraySet_PlainInstr t) = Node "array.set" [encodeWatSexp t]
+  encodeWatSexp ArrayLen_PlainInstr = Leaf "array.len"
+  encodeWatSexp (ArrayFill_PlainInstr t) = Node "array.fill" [encodeWatSexp t]
+  encodeWatSexp (ArrayCopy_PlainInstr t1 t2) = Node "array.copy" [encodeWatSexp t1, encodeWatSexp t2]
+  encodeWatSexp (ArrayInitData_PlainInstr t d) = Node "array.init_data" [encodeWatSexp t, encodeWatSexp d]
+  encodeWatSexp (ArrayInitElem_PlainInstr t e) = Node "array.init_elem" [encodeWatSexp t, encodeWatSexp e]
+  encodeWatSexp AnyConvertExtern_PlainInstr = Leaf "any.convert_extern"
+  encodeWatSexp ExternConvertAny_PlainInstr = Leaf "extern.convert_any"
+  encodeWatSexp (I32Const_PlainInstr c) = Node "i32.const" [encodeWatSexp c]
+  encodeWatSexp (I64Const_PlainInstr c) = Node "i64.const" [encodeWatSexp c]
+  encodeWatSexp (F32Const_PlainInstr c) = Node "f32.const" [encodeWatSexp c]
+  encodeWatSexp (F64Const_PlainInstr c) = Node "f64.const" [encodeWatSexp c]
+  encodeWatSexp (V128Const_PlainInstr shape cs) = Node "v128.const" (Leaf shape : fmap encodeWatSexp cs)
+  encodeWatSexp (I8x16Shuffle_PlainInstr lanes) = Node "i8x16.shuffle" (fmap encodeWatSexp lanes)
+  encodeWatSexp (I8x16ExtractLaneS_PlainInstr lane) = Node "i8x16.extract_lane_s" [encodeWatSexp lane]
+  encodeWatSexp (I8x16ExtractLaneU_PlainInstr lane) = Node "i8x16.extract_lane_u" [encodeWatSexp lane]
+  encodeWatSexp (I16x8ExtractLaneS_PlainInstr lane) = Node "i16x8.extract_lane_s" [encodeWatSexp lane]
+  encodeWatSexp (I16x8ExtractLaneU_PlainInstr lane) = Node "i16x8.extract_lane_u" [encodeWatSexp lane]
+  encodeWatSexp (I32x4ExtractLane_PlainInstr lane) = Node "i32x4.extract_lane" [encodeWatSexp lane]
+  encodeWatSexp (I64x2ExtractLane_PlainInstr lane) = Node "i64x2.extract_lane" [encodeWatSexp lane]
+  encodeWatSexp (F32x4ExtractLane_PlainInstr lane) = Node "f32x4.extract_lane" [encodeWatSexp lane]
+  encodeWatSexp (F64x2ExtractLane_PlainInstr lane) = Node "f64x2.extract_lane" [encodeWatSexp lane]
+  encodeWatSexp (I8x16ReplaceLane_PlainInstr lane) = Node "i8x16.replace_lane" [encodeWatSexp lane]
+  encodeWatSexp (I16x8ReplaceLane_PlainInstr lane) = Node "i16x8.replace_lane" [encodeWatSexp lane]
+  encodeWatSexp (I32x4ReplaceLane_PlainInstr lane) = Node "i32x4.replace_lane" [encodeWatSexp lane]
+  encodeWatSexp (I64x2ReplaceLane_PlainInstr lane) = Node "i64x2.replace_lane" [encodeWatSexp lane]
+  encodeWatSexp (F32x4ReplaceLane_PlainInstr lane) = Node "f32x4.replace_lane" [encodeWatSexp lane]
+  encodeWatSexp (F64x2ReplaceLane_PlainInstr lane) = Node "f64x2.replace_lane" [encodeWatSexp lane]
+
+instance EncodeWatSexp Instr where
+  encodeWatSexp (Plain_Instr p) = encodeWatSexp p
+  encodeWatSexp (Block_Instr bi) = encodeWatSexp bi
+  encodeWatSexp (Folded_Instr fi) = encodeWatSexp fi
+
+instance EncodeWatSexpList Instrs where
+  encodeWatSexpList = instrsSexpList
+
+instance EncodeWatSexp FoldedInstr where
+  encodeWatSexp (Plain_FoldedInstr p inputs) =
+    let Node op kids = encodeWatSexp p
+     in Node op (kids <> fmap encodeWatSexp inputs)
+  encodeWatSexp (Block_FoldedInstr idM bt body) =
+    Node "block" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
+  encodeWatSexp (Loop_FoldedInstr idM bt body) =
+    Node "loop" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> fmap encodeWatSexp body))
+  encodeWatSexp (If_FoldedInstr idM bt inputs thenBody elseBody) =
+    Node "if" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> fmap encodeWatSexp inputs <> [Node "then" (fmap encodeWatSexp thenBody)] <> [Node "else" (fmap encodeWatSexp elseBody) | not (null elseBody)]))
+  encodeWatSexp (TryTable_FoldedInstr idM bt cs body) =
+    Node "try_table" (foldMap (singleton . encodeWatSexp) idM <> (blockTypeSexpList bt <> fmap encodeWatSexp cs <> fmap encodeWatSexp body))
+
+instance EncodeWatSexpList Expr where
+  encodeWatSexpList = exprSexpList
+
+instance EncodeWatSexp Idx where
+  encodeWatSexp (Index_Idx n) = encodeWatSexp n
+  encodeWatSexp (Identifier_Idx (Identifier t)) = Leaf ("$" <> t)
+
+instance EncodeWatSexp TypeIdx where
+  encodeWatSexp (TypeIdx i) = encodeWatSexp i
+
+instance EncodeWatSexp FuncIdx where
+  encodeWatSexp (FuncIdx i) = encodeWatSexp i
+
+instance EncodeWatSexp GlobalIdx where
+  encodeWatSexp (GlobalIdx i) = encodeWatSexp i
+
+instance EncodeWatSexp TableIdx where
+  encodeWatSexp (TableIdx i) = encodeWatSexp i
+
+instance EncodeWatSexp MemIdx where
+  encodeWatSexp (MemIdx i) = encodeWatSexp i
+
+instance EncodeWatSexp TagIdx where
+  encodeWatSexp (TagIdx i) = encodeWatSexp i
+
+instance EncodeWatSexp ElemIdx where
+  encodeWatSexp (ElemIdx i) = encodeWatSexp i
+
+instance EncodeWatSexp DataIdx where
+  encodeWatSexp (DataIdx i) = encodeWatSexp i
+
+instance EncodeWatSexp LabelIdx where
+  encodeWatSexp (LabelIdx i) = encodeWatSexp i
+
+instance EncodeWatSexp LocalIdx where
+  encodeWatSexp (LocalIdx i) = encodeWatSexp i
+
+instance EncodeWatSexp FieldIdx where
+  encodeWatSexp (FieldIdx i) = encodeWatSexp i
+
+instance EncodeWatSexp Type where
+  encodeWatSexp (Type rt) = encodeWatSexp rt
+
+instance EncodeWatSexp Tag where
+  encodeWatSexp (Tag idM tt) = Node "tag" (foldMap (singleton . encodeWatSexp) idM <> encodeWatSexpList tt)
+
+instance EncodeWatSexp Global where
+  encodeWatSexp (Global idM gt e) = Node "global" (foldMap (singleton . encodeWatSexp) idM <> [encodeWatSexp gt] <> encodeWatSexpList e)
+
+instance EncodeWatSexp Mem where
+  encodeWatSexp (Mem idM mt) = Node "memory" (foldMap (singleton . encodeWatSexp) idM <> memTypeSexpList mt)
+
+instance EncodeWatSexp Table where
+  encodeWatSexp (Table idM tt e) = Node "table" (foldMap (singleton . encodeWatSexp) idM <> (tableTypeSexpList tt <> encodeWatSexpList e))
+
+instance EncodeWatSexp Local where
+  encodeWatSexp (Local idM vt) = Node "local" (foldMap (singleton . encodeWatSexp) idM <> [encodeWatSexp vt])
+
+instance EncodeWatSexp Func where
+  encodeWatSexp (Func idM tuM ls e) = Node "func" (foldMap (singleton . encodeWatSexp) idM <> (foldMap encodeWatSexpList tuM <> fmap encodeWatSexp ls <> exprSexpList e))
+
+instance EncodeWatSexpList DataMode where
+  encodeWatSexpList = dataModeSexpList
+
+instance EncodeWatSexp DataSegment where
+  encodeWatSexp (DataSegment idM mode bs) = Node "data" (foldMap (singleton . encodeWatSexp) idM <> (dataModeSexpList mode <> [encodeWatSexp bs]))
+
+instance EncodeWatSexpList ElemMode where
+  encodeWatSexpList = elemModeSexpList
+
+instance EncodeWatSexp ElemExpr where
+  encodeWatSexp (ElemExpr e) = Node "item" (encodeWatSexpList e)
+
+instance EncodeWatSexpList ElemList where
+  encodeWatSexpList = elemListSexpList
+
+instance EncodeWatSexp ElemSegment where
+  encodeWatSexp (ElemSegment idM mode el) = Node "elem" (foldMap (singleton . encodeWatSexp) idM <> (elemModeSexpList mode <> elemListSexpList el))
+
+instance EncodeWatSexp Start where
+  encodeWatSexp (Start f) = Node "start" [encodeWatSexp f]
+
+instance EncodeWatSexp Import where
+  encodeWatSexp (Import nm1 nm2 et) = Node "import" [encodeWatSexp nm1, encodeWatSexp nm2, encodeWatSexp et]
+
+instance EncodeWatSexp ExternIdx where
+  encodeWatSexp (Tag_ExternIdx x) = Node "tag" [encodeWatSexp x]
+  encodeWatSexp (Global_ExternIdx x) = Node "global" [encodeWatSexp x]
+  encodeWatSexp (Memory_ExternIdx x) = Node "memory" [encodeWatSexp x]
+  encodeWatSexp (Table_ExternIdx x) = Node "table" [encodeWatSexp x]
+  encodeWatSexp (Func_ExternIdx x) = Node "func" [encodeWatSexp x]
+
+instance EncodeWatSexp Export where
+  encodeWatSexp (Export nm xx) = Node "export" [encodeWatSexp nm, encodeWatSexp xx]
+
+instance EncodeWatSexp Decl where
+  encodeWatSexp (Type_Decl t) = encodeWatSexp t
+  encodeWatSexp (Import_Decl i) = encodeWatSexp i
+  encodeWatSexp (Tag_Decl t) = encodeWatSexp t
+  encodeWatSexp (Global_Decl g) = encodeWatSexp g
+  encodeWatSexp (Mem_Decl m) = encodeWatSexp m
+  encodeWatSexp (Table_Decl t) = encodeWatSexp t
+  encodeWatSexp (Func_Decl f) = encodeWatSexp f
+  encodeWatSexp (Data_Decl d) = encodeWatSexp d
+  encodeWatSexp (Elem_Decl e) = encodeWatSexp e
+  encodeWatSexp (Start_Decl s) = encodeWatSexp s
+  encodeWatSexp (Export_Decl e) = encodeWatSexp e
+
+instance EncodeWatSexp Module where
+  encodeWatSexp (Module idM decls) = Node "module" (foldMap (singleton . encodeWatSexp) idM <> fmap encodeWatSexp decls)
