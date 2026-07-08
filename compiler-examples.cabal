@@ -1,0 +1,157 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.39.1.
+--
+-- see: https://github.com/sol/hpack
+
+name:           compiler-examples
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/<author_github_username>/compiler-examples#readme>
+homepage:       https://github.com/<author_github_username>/compiler-examples#readme
+bug-reports:    https://github.com/<author_github_username>/compiler-examples/issues
+author:         <author_name>
+maintainer:     <author_email>
+copyright:      <copyright>; <author_name>
+license:        BSD-3-Clause
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/<author_github_username>/compiler-examples
+
+library
+  exposed-modules:
+      Language.Test.Spec
+      Language.Wat
+      Lib
+      Utilities.Unsafe
+  other-modules:
+      Paths_compiler_examples
+  autogen-modules:
+      Paths_compiler_examples
+  hs-source-dirs:
+      src
+  default-extensions:
+      DerivingVia
+      DeriveAnyClass
+      OverloadedRecordDot
+      RecordWildCards
+      OverloadedStrings
+      QuasiQuotes
+      PatternSynonyms
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      Glob
+    , QuickCheck
+    , aeson
+    , array
+    , base >=4.7 && <5
+    , bytestring
+    , conduit
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , lens
+    , mtl
+    , parsec
+    , prettyprinter
+    , tasty
+    , tasty-golden
+    , tasty-hunit
+    , tasty-quickcheck
+    , template-haskell
+    , text
+    , transformers
+  default-language: GHC2024
+
+executable compiler-examples-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_compiler_examples
+  autogen-modules:
+      Paths_compiler_examples
+  hs-source-dirs:
+      app
+  default-extensions:
+      DerivingVia
+      DeriveAnyClass
+      OverloadedRecordDot
+      RecordWildCards
+      OverloadedStrings
+      QuasiQuotes
+      PatternSynonyms
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      Glob
+    , QuickCheck
+    , aeson
+    , array
+    , base >=4.7 && <5
+    , bytestring
+    , compiler-examples
+    , conduit
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , lens
+    , mtl
+    , parsec
+    , prettyprinter
+    , tasty
+    , tasty-golden
+    , tasty-hunit
+    , tasty-quickcheck
+    , template-haskell
+    , text
+    , transformers
+  default-language: GHC2024
+
+test-suite compiler-examples-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_compiler_examples
+  autogen-modules:
+      Paths_compiler_examples
+  hs-source-dirs:
+      test
+  default-extensions:
+      DerivingVia
+      DeriveAnyClass
+      OverloadedRecordDot
+      RecordWildCards
+      OverloadedStrings
+      QuasiQuotes
+      PatternSynonyms
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -rtsopts
+  build-depends:
+      Glob
+    , QuickCheck
+    , aeson
+    , array
+    , base >=4.7 && <5
+    , bytestring
+    , compiler-examples
+    , conduit
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , lens
+    , mtl
+    , parsec
+    , prettyprinter
+    , tasty
+    , tasty-golden
+    , tasty-hunit
+    , tasty-quickcheck
+    , template-haskell
+    , text
+    , transformers
+  default-language: GHC2024
