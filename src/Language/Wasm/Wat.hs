@@ -4,6 +4,7 @@
 module Language.Wasm.Wat where
 
 import Data.ByteString (ByteString)
+import Data.Int (Int32, Int64)
 import Data.List (singleton)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -426,8 +427,8 @@ data PlainInstr
   | AnyConvertExtern_PlainInstr
   | ExternConvertAny_PlainInstr
   | -- ### 6.5.9 Numeric Const Instructions
-    I32Const_PlainInstr Int
-  | I64Const_PlainInstr Int
+    I32Const_PlainInstr Int32
+  | I64Const_PlainInstr Int64
   | F32Const_PlainInstr Float
   | F64Const_PlainInstr Float
   | -- ### 6.5.9 Numeric Operators
@@ -1075,7 +1076,10 @@ instance EncodeWat Text where
 instance EncodeWat Natural where
   encodeWat n = Leaf (Text.show n)
 
-instance EncodeWat Int where
+instance EncodeWat Int32 where
+  encodeWat i = Leaf (Text.show i)
+
+instance EncodeWat Int64 where
   encodeWat i = Leaf (Text.show i)
 
 instance EncodeWat Integer where

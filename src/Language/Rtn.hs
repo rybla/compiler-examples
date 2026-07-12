@@ -13,7 +13,7 @@ import Prettyprinter.Util qualified as Pp
 
 type Tm ann = Tree.Tree (Label ann)
 
-pattern Leaf :: Label ann -> Tree.Tree (Label ann)
+pattern Leaf :: Label ann -> Tm ann
 pattern Leaf l = Tree.Node l []
 
 instance {-# OVERLAPPING #-} Pretty (Tm ann) where
