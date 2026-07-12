@@ -1132,8 +1132,10 @@ instance EncodeWat ValType where
   encodeWat (RefType_ValType rt) = encodeWat rt
 
 instance EncodeWat CompType where
+  encodeWat (Struct_CompType []) = Node "struct" [Leaf ""]
   encodeWat (Struct_CompType fs) = Node "struct" (fmap encodeWat fs)
   encodeWat (Array_CompType ft) = Node "array" [encodeWat ft]
+  encodeWat (Func_CompType [] []) = Node "func" [Leaf ""]
   encodeWat (Func_CompType ps rs) = Node "func" (fmap encodeWat ps <> fmap encodeWat rs)
 
 instance EncodeWat Field where
@@ -1163,6 +1165,7 @@ instance EncodeWat Final where
   encodeWat Final = Leaf "final"
 
 instance EncodeWat SubType where
+  encodeWat (SubType Nothing [] ct) = encodeWat ct
   encodeWat (SubType fM tis ct) = Node "sub" (encodeWatList fM <> (fmap encodeWat tis <> [encodeWat ct]))
 
 instance EncodeWat TypeDef where
