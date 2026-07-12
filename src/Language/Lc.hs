@@ -1,12 +1,40 @@
-module Language.Lc.Interpretation where
+module Language.Lc where
 
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.State (MonadState (get), put)
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
-import Language.Lc.Syntax
+import GHC.Generics (Generic)
 import Numeric.Natural (Natural, minusNaturalMaybe)
-import Prettyprinter (Doc, dquotes, pretty, (<+>))
+import Prettyprinter (Doc, Pretty (pretty), dquotes, parens, pretty, (<+>))
+import Prettyprinter.Util (reflow)
 
+--------------------------------
+-- Syntax
+--------------------------------
+
+data Tm
+  = -- | Literal string value
+    Lit Text
+  | -- | DeBruijn-indexed variable reference
+    Var Natural
+  | -- | λ-abstraction
+    Lam Tm
+  | -- | function application
+    App Tm Tm
+  deriving (Generic, Eq, Show, Ord)
+
+instance Pretty Tm where
+  pretty (Lit t) = reflow $ Text.show t
+  pretty (Var i) = "@" <> pretty i
+  pretty (Lam b) = parens $ "λ" <+> pretty b
+  pretty (App f a) = parens $ pretty f <+> pretty a
+
+-- [TODO]: implement `instance Arbitrary Tm`
+
+--------------------------------
+-- Interpretation
 --------------------------------
 
 normalize :: (MonadState Natural m, MonadError (Doc Void) m) => Tm -> m Tm
@@ -32,3 +60,9 @@ subst i v (Var j) = case compare i j of
   GT -> Var (j - 1)
 subst i v (Lam b) = Lam (subst (succ i) v b)
 subst i v (App f a) = App (subst i v f) (subst i v a)
+
+--------------------------------
+-- Compilation
+--------------------------------
+
+-- [TODO]: implement `instance CompileSki Tm`

@@ -1,4 +1,4 @@
-module Language.Rtn.Syntax where
+module Language.Rtn where
 
 import Data.Text (Text)
 import Data.Tree (Tree (Node))
@@ -7,6 +7,8 @@ import Prettyprinter (Pretty (pretty))
 import Prettyprinter qualified as Pp
 import Prettyprinter.Util qualified as Pp
 
+--------------------------------
+-- Syntax
 --------------------------------
 
 type Tm ann = Tree.Tree (Label ann)

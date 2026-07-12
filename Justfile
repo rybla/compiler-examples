@@ -34,8 +34,8 @@ test_update_goldenfiles:
 haddock:
   stack haddock --haddock-arguments "--html-with-mathjax"
 
-[doc("Run all code checks")]
-check: format build lint test
+[doc("Run all code validation checks")]
+validate: format build lint test
 
 [doc("Query the Hoogle database with a Hoogle-style query")]
 hoogle query:
