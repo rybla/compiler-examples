@@ -3,7 +3,6 @@ module Language.Skibc where
 
 import Control.Applicative ((<|>))
 import Control.Lens
-import Data.Int (Int64)
 import GHC.Generics (Generic)
 import Language.Godel (Godel (encodeGodel))
 import Language.Wasm.Wat (CompileWat (compileWat))
@@ -37,7 +36,7 @@ instance Godel Tm where
   encodeGodel I = 3
   encodeGodel B = 4
   encodeGodel C = 5
-  encodeGodel (App1 x y) = encodeGodel (6 :: Int64, (x, y))
+  encodeGodel (App1 x y) = encodeGodel (6 :: Integer, (x, y))
 
 instance Arbitrary Tm where
   arbitrary = sized genTm
