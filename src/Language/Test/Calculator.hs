@@ -14,7 +14,7 @@ import Language.Calculator.Syntax
 import Language.Test.Common
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertFailure)
-import Test.Tasty.QuickCheck (ioProperty, testProperty)
+import Test.Tasty.QuickCheck (idempotentIOProperty, testProperty)
 
 --------------------------------
 
@@ -28,7 +28,7 @@ spec =
               testWatModule "x2" dp $
                 compile (Operation Times (Operation Plus (Literal 3) (Literal 4)) (Literal 5))
             ],
-          testProperty "compiler-correct" $ \t -> ioProperty $ do
+          testProperty "compiler-correct" $ \t -> idempotentIOProperty $ do
             outCompiled <-
               either (fail . LazyText.unpack) pure <=< runExceptT
                 $ either

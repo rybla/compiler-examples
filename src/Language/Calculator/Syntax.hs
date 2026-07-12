@@ -1,9 +1,11 @@
-{- HLINT ignore "Avoid restricted function" -}
+-- {- HLINT ignore "Avoid restricted function" -}
 
 module Language.Calculator.Syntax where
 
+import Control.Lens hiding (elements, op)
 import GHC.Generics (Generic)
 import Test.Tasty.QuickCheck (Arbitrary (arbitrary, shrink), elements, oneof, sized)
+import Utilities (safeDiv)
 
 --------------------------------
 
@@ -27,7 +29,10 @@ instance Arbitrary Tm where
       genTm n =
         oneof
           [ Literal <$> arbitrary,
-            Operation <$> arbitrary <*> genTm (n `div` 2) <*> genTm (n `div` 2)
+            do
+              a <- n `safeDiv` 2 & maybe (genTm 0) genTm
+              b <- n `safeDiv` 2 & maybe (genTm 0) genTm
+              (\op -> Operation op a b) <$> arbitrary
           ]
 
   shrink (Literal n) = [Literal n' | n' <- shrink n]
