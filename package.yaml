@@ -58,6 +58,7 @@ default-extensions:
   - OverloadedStrings
   - QuasiQuotes
   - PatternSynonyms
+  - FunctionalDependencies
 
 ghc-options:
   - -Wall

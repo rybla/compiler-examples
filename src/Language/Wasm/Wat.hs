@@ -1849,3 +1849,13 @@ instance EncodeWat Decl where
 
 instance EncodeWat Module where
   encodeWat (Module idM decls) = Node "module" (encodeWatList idM <> fmap encodeWat decls)
+
+--------------------------------
+-- CompileWat
+--------------------------------
+
+class CompileWat params a | a -> params where
+  compileWat :: params -> a -> Module
+
+instance CompileWat () Module where
+  compileWat _ = id

@@ -25,9 +25,7 @@ source-repository head
 
 library
   exposed-modules:
-      Language.Calculator.Compilation
-      Language.Calculator.Interpretation
-      Language.Calculator.Syntax
+      Language.Calculator
       Language.Lc.Compilation
       Language.Lc.Interpretation
       Language.Lc.Syntax
@@ -56,6 +54,7 @@ library
       OverloadedStrings
       QuasiQuotes
       PatternSynonyms
+      FunctionalDependencies
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       Glob
@@ -101,6 +100,7 @@ executable compiler-examples-exe
       OverloadedStrings
       QuasiQuotes
       PatternSynonyms
+      FunctionalDependencies
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       Glob
@@ -148,6 +148,7 @@ test-suite compiler-examples-test
       OverloadedStrings
       QuasiQuotes
       PatternSynonyms
+      FunctionalDependencies
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -rtsopts
   build-depends:
       Glob
