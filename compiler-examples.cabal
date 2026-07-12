@@ -28,6 +28,8 @@ library
       Language.Calculator.Compilation
       Language.Calculator.Interpretation
       Language.Calculator.Syntax
+      Language.Lc.Compilation
+      Language.Lc.Interpretation
       Language.Lc.Syntax
       Language.Rtn.Syntax
       Language.Test.Calculator

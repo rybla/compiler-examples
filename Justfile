@@ -31,6 +31,9 @@ test_update_goldenfiles:
   @echo "Running test suite and updating golden files"
   stack test --ghc-options "{{ghc_options_for_build}}" --test-arguments "-j 1 --accept"
 
+haddock:
+  stack haddock --haddock-arguments "--html-with-mathjax"
+
 [doc("Run all code checks")]
 check: format build lint test
 
