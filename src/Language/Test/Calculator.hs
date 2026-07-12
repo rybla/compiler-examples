@@ -21,29 +21,28 @@ import Test.Tasty.QuickCheck (ioProperty, testProperty)
 spec :: TestTree
 spec =
   testGroup "Calculator" $
-    [ testGroup "examples" $
-        [ testWatModule "x1" dp $
-            compile (Literal 42),
-          testWatModule "x2" dp $
-            compile (Operation Times (Operation Plus (Literal 3) (Literal 4)) (Literal 5))
-        ],
-      testProperty "compiler-correct" $ \t -> ioProperty $ do
-        outCompiled <-
-          either (fail . LazyText.unpack) pure <=< runExceptT
-            $ either
-              fail
-              ( \(i, rest) -> do
-                  unless (LazyText.null rest) . liftIO $
-                    assertFailure ("The rest of output after parsed Int must be empty, but it was: " <> LazyText.unpack rest)
-                  pure i
-              )
-              . signed decimal
-              . LazyText.strip
-              . LazyTextEncoding.decodeUtf8
-              <=< interpretWatModule . compile
-            $ t
-        let outInterpreted = interpret t
-        pure $ outInterpreted == outCompiled
-    ]
-  where
-    dp = "asset/golden/Calculator/"
+    let dp = "asset/golden/Calculator/"
+     in [ testGroup "examples" $
+            [ testWatModule "x1" dp $
+                compile (Literal 42),
+              testWatModule "x2" dp $
+                compile (Operation Times (Operation Plus (Literal 3) (Literal 4)) (Literal 5))
+            ],
+          testProperty "compiler-correct" $ \t -> ioProperty $ do
+            outCompiled <-
+              either (fail . LazyText.unpack) pure <=< runExceptT
+                $ either
+                  fail
+                  ( \(i, rest) -> do
+                      unless (LazyText.null rest) . liftIO $
+                        assertFailure ("The rest of output after parsed Int must be empty, but it was: " <> LazyText.unpack rest)
+                      pure i
+                  )
+                  . signed decimal
+                  . LazyText.strip
+                  . LazyTextEncoding.decodeUtf8
+                  <=< interpretWatModule . compile
+                $ t
+            let outInterpreted = interpret t
+            pure $ outInterpreted == outCompiled
+        ]
