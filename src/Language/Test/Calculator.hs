@@ -23,10 +23,10 @@ spec =
   testGroup "Calculator" $
     let dp = "asset/golden/Calculator/"
      in [ testGroup "examples" $
-            [ testWatModule "x1" dp $
-                compile (Literal 42),
-              testWatModule "x2" dp $
-                compile (Operation Times (Operation Plus (Literal 3) (Literal 4)) (Literal 5))
+            [ testWatModule "x1" dp [] . compile $
+                Literal 42,
+              testWatModule "x2" dp [] . compile $
+                Operation Times (Operation Plus (Literal 3) (Literal 4)) (Literal 5)
             ],
           testProperty "compiler-correct" $ \t -> idempotentIOProperty $ do
             outCompiled <-
@@ -41,7 +41,7 @@ spec =
                   . signed decimal
                   . LazyText.strip
                   . LazyTextEncoding.decodeUtf8
-                  <=< interpretWatModule . compile
+                  <=< interpretWatModule [] . compile
                 $ t
             let outInterpreted = interpret t
             pure $ outInterpreted == outCompiled

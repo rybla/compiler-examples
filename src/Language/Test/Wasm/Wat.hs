@@ -12,7 +12,7 @@ spec :: TestTree
 spec =
   testGroup "Wat" $
     let dirpath = "asset/golden/Wat/"
-     in [ testWatModule "x1-return_default" dirpath $
+     in [ testWatModule "x1-return_default" dirpath [] $
             Module
               Nothing
               [ Type_Decl $

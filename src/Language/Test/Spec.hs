@@ -3,6 +3,7 @@
 module Language.Test.Spec (main) where
 
 import Language.Test.Calculator qualified
+import Language.Test.Lc qualified
 import Language.Test.Wasm qualified
 import Test.Tasty (TestTree, defaultMain, testGroup)
 
@@ -13,5 +14,6 @@ spec :: TestTree
 spec =
   testGroup "compiler-examples" $
     [ Language.Test.Wasm.spec,
-      Language.Test.Calculator.spec
+      Language.Test.Calculator.spec,
+      Language.Test.Lc.spec
     ]

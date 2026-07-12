@@ -34,6 +34,7 @@ library
       Language.Rtn.Syntax
       Language.Test.Calculator
       Language.Test.Common
+      Language.Test.Lc
       Language.Test.Spec
       Language.Test.Wasm
       Language.Test.Wasm.Wat

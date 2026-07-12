@@ -19,8 +19,8 @@ import Test.Tasty.Golden (goldenVsString)
 dirpathTmp :: FilePath
 dirpathTmp = "tmp"
 
-testWatModule :: TestName -> FilePath -> Module -> TestTree
-testWatModule name dp m =
+testWatModule :: TestName -> FilePath -> [String] -> Module -> TestTree
+testWatModule name dp args m =
   testGroup name $
     [ goldenVsString "wat" (dp <> name <> ".golden.wat") $
         encodeWatModuleAsUtf8 m,
@@ -31,7 +31,7 @@ testWatModule name dp m =
       after AllSucceed (name <> ".wasm")
         . goldenVsString "interp" (dp <> name <> ".out.golden.txt")
         . (either (fail . ("Error:\n\n" <>) . LazyText.unpack) pure <=< runExceptT)
-        $ interpretWasmFile (dp <> name <> ".golden.wasm")
+        $ interpretWasmFile (dp <> name <> ".golden.wasm") args
     ]
 
 encodeWatModuleAsUtf8 :: Module -> IO LazyByteString
@@ -42,17 +42,17 @@ encodeWatModuleAsUtf8 =
     <=< runExceptT
       . formatWat
 
-interpretWasmFile :: FilePath -> ExceptT LazyText IO LazyByteString
-interpretWasmFile fp = do
-  (errorCode, out, err) <- liftIO $ readProcessWithExitCode "wasmtime" ["run", "-W", "gc=y", "--invoke", "main", fp] ""
+interpretWasmFile :: FilePath -> [String] -> ExceptT LazyText IO LazyByteString
+interpretWasmFile fp args = do
+  (errorCode, out, err) <- liftIO $ readProcessWithExitCode "wasmtime" (["run", "-W", "gc=y", "--invoke", "main", fp] <> args) ""
   case errorCode of
     ExitFailure _ -> pure $ "Error\n\n" <> err
     ExitSuccess -> pure out
 
-interpretWatModule :: Module -> ExceptT LazyText IO LazyByteString
-interpretWatModule m = do
+interpretWatModule :: [String] -> Module -> ExceptT LazyText IO LazyByteString
+interpretWatModule args m = do
   t <- toWasm m
-  (errorCode, out, err) <- liftIO $ readProcessWithExitCode "wasmtime" ["run", "-W", "gc=y", "--invoke", "main", "-"] t
+  (errorCode, out, err) <- liftIO $ readProcessWithExitCode "wasmtime" (["run", "-W", "gc=y", "--invoke", "main"] <> args <> ["-"]) t
   case errorCode of
     ExitFailure _ -> pure $ "Error\n\n" <> err
     ExitSuccess -> pure out
