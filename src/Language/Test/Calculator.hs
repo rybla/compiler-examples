@@ -28,7 +28,7 @@ spec =
               testWatModule "x2" goldenPath [] . compileWat () $
                 Operation Times (Operation Plus (Literal 3) (Literal 4)) (Literal 5)
             ],
-          testProperty "compiler-correctness" $ \t -> idempotentIOProperty $ do
+          testProperty "compilation-correctness" $ \t -> idempotentIOProperty $ do
             let outInterpreted = interpret t
             outCompiled <-
               t
