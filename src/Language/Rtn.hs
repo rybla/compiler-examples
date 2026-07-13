@@ -11,12 +11,12 @@ import Prettyprinter.Util qualified as Pp
 -- Syntax
 --------------------------------
 
-type Tm ann = Tree.Tree (Label ann)
+type Term ann = Tree.Tree (Label ann)
 
-pattern Leaf :: Label ann -> Tm ann
+pattern Leaf :: Label ann -> Term ann
 pattern Leaf l = Tree.Node l []
 
-instance {-# OVERLAPPING #-} Pretty (Tm ann) where
+instance {-# OVERLAPPING #-} Pretty (Term ann) where
   pretty (Leaf l) = pretty l
   pretty (Node l ts) = "(" <> pretty l <> (Pp.vsep . fmap pretty) ts <> ")"
 

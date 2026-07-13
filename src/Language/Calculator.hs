@@ -11,9 +11,9 @@ import Utilities (halve)
 -- Syntax
 --------------------------------
 
-data Tm
+data Term
   = Literal Int64
-  | Operation Operator Tm Tm
+  | Operation Operator Term Term
   deriving (Generic, Eq, Show, Ord)
 
 data Operator
@@ -21,7 +21,7 @@ data Operator
   | Times
   deriving (Generic, Eq, Show, Ord)
 
-instance Godel Tm where
+instance Godel Term where
   encodeGodel (Literal x) = encodeGodel (1 :: Int64, x)
   encodeGodel (Operation op a b) = encodeGodel (op, (a, b))
 
@@ -32,16 +32,16 @@ instance Godel Operator where
 instance Arbitrary Operator where
   arbitrary = elements [Plus, Times]
 
-instance Arbitrary Tm where
-  arbitrary = sized genTm
+instance Arbitrary Term where
+  arbitrary = sized genTerm
     where
-      genTm 0 = Literal <$> arbitrary
-      genTm n =
+      genTerm 0 = Literal <$> arbitrary
+      genTerm n =
         oneof
           [ Literal <$> arbitrary,
             do
-              a <- genTm (halve n)
-              b <- genTm (halve n)
+              a <- genTerm (halve n)
+              b <- genTerm (halve n)
               (\op -> Operation op a b) <$> arbitrary
           ]
 
@@ -58,7 +58,7 @@ instance Arbitrary Tm where
 -- Interpretation
 --------------------------------
 
-interpret :: Tm -> Int64
+interpret :: Term -> Int64
 interpret (Literal v) = v
 interpret (Operation Plus t1 t2) = interpret t1 + interpret t2
 interpret (Operation Times t1 t2) = interpret t1 * interpret t2
@@ -67,7 +67,7 @@ interpret (Operation Times t1 t2) = interpret t1 * interpret t2
 -- Compilation
 --------------------------------
 
-instance Wat.CompileWat () Tm where
+instance Wat.CompileWat () Term where
   compileWat () tm =
     Wat.Module
       Nothing
@@ -88,14 +88,14 @@ instance Wat.CompileWat () Tm where
             (Just . Wat.Identifier $ "main")
             (Just . Wat.TypeUse . Wat.TypeIdx . Wat.Identifier_Idx . Wat.Identifier $ "main_type")
             []
-            (Wat.Expr (compileTm tm)),
+            (Wat.Expr (compileTerm tm)),
         Wat.Export_Decl $
           Wat.Export
             (Wat.Name "main")
             (Wat.Func_ExternIdx . Wat.FuncIdx . Wat.Identifier_Idx . Wat.Identifier $ "main")
       ]
 
-compileTm :: Tm -> [Wat.Instr]
-compileTm (Literal n) = [Wat.Plain_Instr (Wat.I64Const_PlainInstr n)]
-compileTm (Operation Plus t1 t2) = compileTm t1 <> compileTm t2 <> [Wat.Plain_Instr Wat.I64Add_PlainInstr]
-compileTm (Operation Times t1 t2) = compileTm t1 <> compileTm t2 <> [Wat.Plain_Instr Wat.I64Mul_PlainInstr]
+compileTerm :: Term -> [Wat.Instr]
+compileTerm (Literal n) = [Wat.Plain_Instr (Wat.I64Const_PlainInstr n)]
+compileTerm (Operation Plus t1 t2) = compileTerm t1 <> compileTerm t2 <> [Wat.Plain_Instr Wat.I64Add_PlainInstr]
+compileTerm (Operation Times t1 t2) = compileTerm t1 <> compileTerm t2 <> [Wat.Plain_Instr Wat.I64Mul_PlainInstr]

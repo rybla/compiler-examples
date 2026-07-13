@@ -14,30 +14,30 @@ import Prettyprinter.Util (reflow)
 -- Syntax
 --------------------------------
 
-data Tm
+data Term
   = -- | Literal string value
     Lit Text
   | -- | DeBruijn-indexed variable reference
     Var Natural
   | -- | λ-abstraction
-    Lam Tm
+    Lam Term
   | -- | function application
-    App Tm Tm
+    App Term Term
   deriving (Generic, Eq, Show, Ord)
 
-instance Pretty Tm where
+instance Pretty Term where
   pretty (Lit t) = reflow $ Text.show t
   pretty (Var i) = "@" <> pretty i
   pretty (Lam b) = parens $ "λ" <+> pretty b
   pretty (App f a) = parens $ pretty f <+> pretty a
 
--- [TODO]: implement `instance Arbitrary Tm`
+-- [TODO]: implement `instance Arbitrary Term`
 
 --------------------------------
 -- Interpretation
 --------------------------------
 
-normalize :: (MonadState Natural m, MonadError (Doc Void) m) => Tm -> m Tm
+normalize :: (MonadState Natural m, MonadError (Doc Void) m) => Term -> m Term
 normalize (Lit t) = pure $ Lit t
 normalize (Var i) = pure $ Var i
 normalize (Lam b) = Lam <$> normalize b
@@ -52,7 +52,7 @@ normalize (App f a) = do
     Lam b -> pure $ subst 0 a' b
     _ -> throwError $ "Attempted to apply non-function" <+> (dquotes . pretty) f <+> "to" <+> (dquotes . pretty) a
 
-subst :: Natural -> Tm -> Tm -> Tm
+subst :: Natural -> Term -> Term -> Term
 subst _ _ (Lit t) = Lit t
 subst i v (Var j) = case compare i j of
   LT -> Var j
@@ -65,4 +65,4 @@ subst i v (App f a) = App (subst i v f) (subst i v a)
 -- Compilation
 --------------------------------
 
--- [TODO]: implement `instance CompileSki Tm`
+-- [TODO]: implement `instance CompileSki Term`
