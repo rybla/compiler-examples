@@ -1,13 +1,10 @@
--- | The SKIBC combinator calculus
+-- | The SKIBC combinator calculus.
 module Language.Skibc where
 
 import Control.Applicative ((<|>))
 import Control.Lens
-import Data.Text qualified as Text
 import GHC.Generics (Generic)
-import Language.Godel (Godel (encodeGodel))
 import Language.Wasm.Wat (CompileWat (compileWat))
-import Language.Wasm.Wat qualified as Wat
 import Test.QuickCheck (Arbitrary, oneof, sized)
 import Test.QuickCheck.Arbitrary (Arbitrary (arbitrary, shrink))
 import Utilities (halve)
@@ -24,7 +21,7 @@ data Term
   | B
   | C
   | App1 Term Term
-  deriving (Generic, Eq, Show, Ord)
+  deriving (Generic, Eq, Show, Read, Ord)
 
 pattern App2 :: Term -> Term -> Term -> Term
 pattern App2 f x y = (f `App1` x) `App1` y
@@ -85,4 +82,8 @@ step _ = Nothing
 --------------------------------
 
 instance CompileWat () Term where
-  compileWat () _t = todo "compile "
+  -- The module must encode data structures for SKIBC combinator terms.
+  -- The module must define an "evaluate" function that evaluates a SKIBC combinator term.
+  -- The module must define a "print" function that prints a SKIBC combinator term into a format that matches the format used by the `Show` and `Read` instances of `Term`.
+  -- The module must export a "main" function that evaluates the original SKIBC combinator term `t` given to `compileWat` and prints the result.
+  compileWat () _t = todo "Compile a SKIBC combinator term into a WebAssembly module"

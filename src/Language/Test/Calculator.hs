@@ -2,7 +2,8 @@
 
 module Language.Test.Calculator where
 
-import Control.Monad (unless, (<=<))
+import Control.Lens
+import Control.Monad (unless)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.IO.Class (liftIO)
 import Data.Text.Lazy qualified as LazyText
@@ -20,28 +21,27 @@ import Test.Tasty.QuickCheck (idempotentIOProperty, testProperty)
 spec :: TestTree
 spec =
   testGroup "Calculator" $
-    let dp = "asset/golden/Calculator/"
+    let goldenPath = "asset/golden/Calculator/"
      in [ testGroup "examples" $
-            [ testWatModule "x1" dp [] . compileWat () $
+            [ testWatModule "x1" goldenPath [] . compileWat () $
                 Literal 42,
-              testWatModule "x2" dp [] . compileWat () $
+              testWatModule "x2" goldenPath [] . compileWat () $
                 Operation Times (Operation Plus (Literal 3) (Literal 4)) (Literal 5)
             ],
-          testProperty "compiler-correct" $ \t -> idempotentIOProperty $ do
+          testProperty "compiler-correctness" $ \t -> idempotentIOProperty $ do
+            let outInterpreted = interpret t
             outCompiled <-
-              either (fail . LazyText.unpack) pure <=< runExceptT
-                $ either
+              t
+                & interpretWatModule [] . compileWat ()
+                <&> signed decimal . LazyText.strip . LazyTextEncoding.decodeUtf8
+                >>= either
                   fail
                   ( \(i, rest) -> do
                       unless (LazyText.null rest) . liftIO $
                         assertFailure ("The rest of output after parsed Int must be empty, but it was: " <> LazyText.unpack rest)
                       pure i
                   )
-                  . signed decimal
-                  . LazyText.strip
-                  . LazyTextEncoding.decodeUtf8
-                  <=< interpretWatModule [] . compileWat ()
-                $ t
-            let outInterpreted = interpret t
+                & runExceptT
+                >>= either (fail . LazyText.unpack) pure
             pure $ outInterpreted == outCompiled
         ]
