@@ -68,6 +68,7 @@ library
     , deepseq
     , directory
     , filepath
+    , int-cast
     , lens
     , mtl
     , parsec
@@ -115,6 +116,7 @@ executable compiler-examples-exe
     , deepseq
     , directory
     , filepath
+    , int-cast
     , lens
     , mtl
     , parsec
@@ -163,6 +165,7 @@ test-suite compiler-examples-test
     , deepseq
     , directory
     , filepath
+    , int-cast
     , lens
     , mtl
     , parsec

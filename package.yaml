@@ -42,6 +42,7 @@ dependencies:
   - process
   - process-extras
   - temporary
+  - int-cast
   - QuickCheck
   - tasty
   - tasty-hunit
