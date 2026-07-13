@@ -70,10 +70,10 @@ deepStep t@(App1 f a) =
 deepStep _ = Nothing
 
 step :: Term -> Maybe Term
-step (App3 S x y z) = Just $ App2 x y z
+step (App3 S x y z) = Just $ App2 x z (App1 y z)
 step (App2 K x _) = Just x
 step (App1 I x) = Just x
-step (App3 B x y z) = Just $ App2 x y z
+step (App3 B x y z) = Just $ App1 x (App1 y z)
 step (App3 C x y z) = Just $ App2 x z y
 step _ = Nothing
 
@@ -84,6 +84,6 @@ step _ = Nothing
 instance CompileWat () Term where
   -- The module must encode data structures for SKIBC combinator terms.
   -- The module must define an "evaluate" function that evaluates a SKIBC combinator term.
-  -- The module must define a "print" function that prints a SKIBC combinator term into a format that matches the format used by the `Show` and `Read` instances of `Term`.
+  -- The module must define a "print" function that prints a SKIBC combinator term as a string in the format used by the `Show` and `Read` instances of `Term`.
   -- The module must export a "main" function that evaluates the original SKIBC combinator term `t` given to `compileWat` and prints the result.
   compileWat () _t = todo "Compile a SKIBC combinator term into a WebAssembly module"
