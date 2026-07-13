@@ -31,8 +31,8 @@ spec =
           testProperty "compilation-correctness" $ \t -> idempotentIOProperty $ do
             let outInterpreted = interpret t
             outCompiled <-
-              t
-                & interpretWatModule [] . compileWat ()
+              compileWat () t
+                & interpretWatModule []
                 <&> signed decimal . LazyText.strip . LazyTextEncoding.decodeUtf8
                 >>= either
                   fail

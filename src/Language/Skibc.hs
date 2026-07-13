@@ -5,15 +5,19 @@ import Control.Applicative ((<|>))
 import Control.Lens
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.State (MonadState (get), put)
+import Data.ByteString.Char8 qualified as BS8
+import Data.Int (Int32)
+import Data.List qualified as List
+import Data.Text qualified as Text
 import Data.Void (Void)
 import GHC.Generics (Generic)
 import Language.Wasm.Wat (CompileWat (compileWat))
+import Language.Wasm.Wat qualified as Wat
 import Numeric.Natural (Natural, minusNaturalMaybe)
 import Prettyprinter (Doc, Pretty (pretty), dquotes, hsep, (<+>))
 import Test.QuickCheck (Arbitrary, oneof, sized)
 import Test.QuickCheck.Arbitrary (Arbitrary (arbitrary, shrink))
 import Utilities (halve)
-import Utilities.Unsafe
 
 --------------------------------
 -- Syntax
@@ -98,9 +102,686 @@ step _ = Nothing
 -- Compilation
 --------------------------------
 
+termTypeIdx :: Wat.TypeIdx
+termTypeIdx = Wat.TypeIdx (Wat.Identifier_Idx (Wat.Identifier "term"))
+
+termHeapType :: Wat.HeapType
+termHeapType = Wat.TypeIdx_HeapType termTypeIdx
+
+termRefType :: Wat.RefType
+termRefType = Wat.RefType (Just Wat.Null) termHeapType
+
+termType :: Wat.Type
+termType =
+  Wat.Type . Wat.RecType . List.singleton $
+    Wat.TypeDef
+      (Just (Wat.Identifier "term"))
+      ( Wat.SubType
+          Nothing
+          []
+          ( Wat.Struct_CompType
+              [ Wat.Field (Just (Wat.Identifier "tag")) (Wat.FieldType False (Wat.ValType_StorageType (Wat.NumType_ValType Wat.I32_NumType))),
+                Wat.Field (Just (Wat.Identifier "left")) (Wat.FieldType False (Wat.ValType_StorageType (Wat.RefType_ValType termRefType))),
+                Wat.Field (Just (Wat.Identifier "right")) (Wat.FieldType False (Wat.ValType_StorageType (Wat.RefType_ValType termRefType)))
+              ]
+          )
+      )
+
+fdWriteType :: Wat.Type
+fdWriteType =
+  Wat.Type . Wat.RecType . List.singleton $
+    Wat.TypeDef
+      (Just (Wat.Identifier "fd_write_type"))
+      ( Wat.SubType
+          Nothing
+          []
+          ( Wat.Func_CompType
+              [ Wat.Param Nothing (Wat.NumType_ValType Wat.I32_NumType),
+                Wat.Param Nothing (Wat.NumType_ValType Wat.I32_NumType),
+                Wat.Param Nothing (Wat.NumType_ValType Wat.I32_NumType),
+                Wat.Param Nothing (Wat.NumType_ValType Wat.I32_NumType)
+              ]
+              [Wat.Result (Wat.NumType_ValType Wat.I32_NumType)]
+          )
+      )
+
+mainType :: Wat.Type
+mainType =
+  Wat.Type . Wat.RecType . List.singleton $
+    Wat.TypeDef
+      (Just (Wat.Identifier "main_type"))
+      ( Wat.SubType
+          Nothing
+          []
+          ( Wat.Func_CompType
+              []
+              []
+          )
+      )
+
+printStrType :: Wat.Type
+printStrType =
+  Wat.Type . Wat.RecType . List.singleton $
+    Wat.TypeDef
+      (Just (Wat.Identifier "print_str_type"))
+      ( Wat.SubType
+          Nothing
+          []
+          ( Wat.Func_CompType
+              [ Wat.Param Nothing (Wat.NumType_ValType Wat.I32_NumType),
+                Wat.Param Nothing (Wat.NumType_ValType Wat.I32_NumType)
+              ]
+              []
+          )
+      )
+
+stepType :: Wat.Type
+stepType =
+  Wat.Type . Wat.RecType . List.singleton $
+    Wat.TypeDef
+      (Just (Wat.Identifier "step_type"))
+      ( Wat.SubType
+          Nothing
+          []
+          ( Wat.Func_CompType
+              [Wat.Param Nothing (Wat.RefType_ValType termRefType)]
+              [Wat.Result (Wat.RefType_ValType termRefType)]
+          )
+      )
+
+printType :: Wat.Type
+printType =
+  Wat.Type . Wat.RecType . List.singleton $
+    Wat.TypeDef
+      (Just (Wat.Identifier "print_type"))
+      ( Wat.SubType
+          Nothing
+          []
+          ( Wat.Func_CompType
+              [Wat.Param Nothing (Wat.RefType_ValType termRefType)]
+              []
+          )
+      )
+
+fdWriteImport :: Wat.Import
+fdWriteImport =
+  Wat.Import
+    (Wat.Name "wasi_snapshot_preview1")
+    (Wat.Name "fd_write")
+    ( Wat.Func_ExternalType
+        (Just (Wat.Identifier "fd_write"))
+        (Wat.TypeUse (Wat.TypeIdx (Wat.Identifier_Idx (Wat.Identifier "fd_write_type"))))
+    )
+
+memory :: Wat.Mem
+memory =
+  Wat.Mem
+    (Just (Wat.Identifier "memory"))
+    (Wat.MemType Nothing (Wat.Limits 1 Nothing))
+
+memoryExport :: Wat.Export
+memoryExport =
+  Wat.Export
+    (Wat.Name "memory")
+    (Wat.Memory_ExternIdx (Wat.MemIdx (Wat.Identifier_Idx (Wat.Identifier "memory"))))
+
+mainExport :: Wat.Export
+mainExport =
+  Wat.Export
+    (Wat.Name "main")
+    (Wat.Func_ExternIdx (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "main"))))
+
+dataSegments :: [Wat.DataSegment]
+dataSegments =
+  [ makeDataSegment 100 "S",
+    makeDataSegment 101 "K",
+    makeDataSegment 102 "I",
+    makeDataSegment 103 "B",
+    makeDataSegment 104 "C",
+    makeDataSegment 105 "App1 ",
+    makeDataSegment 111 "(",
+    makeDataSegment 114 " ",
+    makeDataSegment 115 ")",
+    makeDataSegment 116 "\n"
+  ]
+  where
+    makeDataSegment :: Int32 -> String -> Wat.DataSegment
+    makeDataSegment offset str =
+      Wat.DataSegment
+        Nothing
+        ( Wat.Active_DataMode
+            (Wat.MemIdx (Wat.Index_Idx 0))
+            (Wat.Expr [Wat.Plain_Instr (Wat.I32Const_PlainInstr offset)])
+        )
+        (BS8.pack str)
+
+if_ :: [Wat.Instr] -> [Wat.Instr] -> Wat.Instr
+if_ thenB elseB =
+  Wat.Block_Instr $
+    Wat.If_BlockInstr
+      Nothing
+      (Wat.Result_BlockType Nothing)
+      thenB
+      Nothing
+      elseB
+      Nothing
+
+loop_ :: Wat.Identifier -> [Wat.Instr] -> Wat.Instr
+loop_ label body =
+  Wat.Block_Instr $
+    Wat.Loop_BlockInstr
+      (Just label)
+      (Wat.Result_BlockType Nothing)
+      body
+      Nothing
+
+structGet :: String -> Wat.Instr
+structGet fieldName =
+  Wat.Plain_Instr $
+    Wat.StructGet_PlainInstr
+      termTypeIdx
+      (Wat.FieldIdx (Wat.Identifier_Idx (Wat.Identifier (Text.pack fieldName))))
+
+stepLocals :: [Wat.Local]
+stepLocals =
+  [ Wat.Local (Just (Wat.Identifier "f")) (Wat.RefType_ValType termRefType),
+    Wat.Local (Just (Wat.Identifier "a")) (Wat.RefType_ValType termRefType),
+    Wat.Local (Just (Wat.Identifier "f_left")) (Wat.RefType_ValType termRefType),
+    Wat.Local (Just (Wat.Identifier "f_right")) (Wat.RefType_ValType termRefType),
+    Wat.Local (Just (Wat.Identifier "f_left_left")) (Wat.RefType_ValType termRefType),
+    Wat.Local (Just (Wat.Identifier "f_left_right")) (Wat.RefType_ValType termRefType)
+  ]
+
+deepStepLocals :: [Wat.Local]
+deepStepLocals =
+  [ Wat.Local (Just (Wat.Identifier "res")) (Wat.RefType_ValType termRefType),
+    Wat.Local (Just (Wat.Identifier "f")) (Wat.RefType_ValType termRefType),
+    Wat.Local (Just (Wat.Identifier "a")) (Wat.RefType_ValType termRefType)
+  ]
+
+evaluateLocals :: [Wat.Local]
+evaluateLocals =
+  [ Wat.Local (Just (Wat.Identifier "current")) (Wat.RefType_ValType termRefType),
+    Wat.Local (Just (Wat.Identifier "next")) (Wat.RefType_ValType termRefType)
+  ]
+
+printLocals :: [Wat.Local]
+printLocals =
+  [ Wat.Local (Just (Wat.Identifier "f")) (Wat.RefType_ValType termRefType),
+    Wat.Local (Just (Wat.Identifier "a")) (Wat.RefType_ValType termRefType)
+  ]
+
+printStrFunc :: Wat.Func
+printStrFunc =
+  Wat.Func
+    (Just (Wat.Identifier "print_str"))
+    (Just (Wat.TypeUse (Wat.TypeIdx (Wat.Identifier_Idx (Wat.Identifier "print_str_type")))))
+    []
+    ( Wat.Expr
+        [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 0),
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          Wat.Plain_Instr (Wat.I32Store_PlainInstr (Wat.MemIdx (Wat.Index_Idx 0)) (Wat.MemArg Nothing Nothing)),
+          Wat.Plain_Instr (Wat.I32Const_PlainInstr 4),
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 1))),
+          Wat.Plain_Instr (Wat.I32Store_PlainInstr (Wat.MemIdx (Wat.Index_Idx 0)) (Wat.MemArg Nothing Nothing)),
+          Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+          Wat.Plain_Instr (Wat.I32Const_PlainInstr 0),
+          Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+          Wat.Plain_Instr (Wat.I32Const_PlainInstr 20),
+          Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "fd_write")))),
+          Wat.Plain_Instr Wat.Drop_PlainInstr
+        ]
+    )
+
+stepFunc :: Wat.Func
+stepFunc =
+  Wat.Func
+    (Just (Wat.Identifier "step"))
+    (Just (Wat.TypeUse (Wat.TypeIdx (Wat.Identifier_Idx (Wat.Identifier "step_type")))))
+    stepLocals
+    ( Wat.Expr
+        [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType),
+              Wat.Plain_Instr Wat.Return_PlainInstr
+            ]
+            [],
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          structGet "tag",
+          Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+          Wat.Plain_Instr Wat.I32Ne_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType),
+              Wat.Plain_Instr Wat.Return_PlainInstr
+            ]
+            [],
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          structGet "left",
+          Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          structGet "right",
+          Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
+          Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
+          Wat.Plain_Instr Wat.I32Eqz_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
+              structGet "tag",
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr 2),
+              Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+              if_
+                [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
+                  Wat.Plain_Instr Wat.Return_PlainInstr
+                ]
+                []
+            ]
+            [],
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
+          Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
+          Wat.Plain_Instr Wat.I32Eqz_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
+              structGet "tag",
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+              Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+              if_
+                [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
+                  structGet "left",
+                  Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left")))),
+                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
+                  structGet "right",
+                  Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_right")))),
+                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left")))),
+                  Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
+                  Wat.Plain_Instr Wat.I32Eqz_PlainInstr,
+                  if_
+                    [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left")))),
+                      structGet "tag",
+                      Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+                      Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+                      if_
+                        [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_right")))),
+                          Wat.Plain_Instr Wat.Return_PlainInstr
+                        ]
+                        []
+                    ]
+                    [],
+                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left")))),
+                  Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
+                  Wat.Plain_Instr Wat.I32Eqz_PlainInstr,
+                  if_
+                    [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left")))),
+                      structGet "tag",
+                      Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+                      Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+                      if_
+                        [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left")))),
+                          structGet "left",
+                          Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_left")))),
+                          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left")))),
+                          structGet "right",
+                          Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_right")))),
+                          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_left")))),
+                          Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
+                          Wat.Plain_Instr Wat.I32Eqz_PlainInstr,
+                          if_
+                            [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_left")))),
+                              structGet "tag",
+                              Wat.Plain_Instr (Wat.I32Const_PlainInstr 0),
+                              Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+                              if_
+                                [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+                                  Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+                                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_right")))),
+                                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
+                                  Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx),
+                                  Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+                                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_right")))),
+                                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
+                                  Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx),
+                                  Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx),
+                                  Wat.Plain_Instr Wat.Return_PlainInstr
+                                ]
+                                [],
+                              Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_left")))),
+                              structGet "tag",
+                              Wat.Plain_Instr (Wat.I32Const_PlainInstr 3),
+                              Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+                              if_
+                                [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+                                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_right")))),
+                                  Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+                                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_right")))),
+                                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
+                                  Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx),
+                                  Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx),
+                                  Wat.Plain_Instr Wat.Return_PlainInstr
+                                ]
+                                [],
+                              Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_left")))),
+                              structGet "tag",
+                              Wat.Plain_Instr (Wat.I32Const_PlainInstr 4),
+                              Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+                              if_
+                                [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+                                  Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+                                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_right")))),
+                                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
+                                  Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx),
+                                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_right")))),
+                                  Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx),
+                                  Wat.Plain_Instr Wat.Return_PlainInstr
+                                ]
+                                []
+                            ]
+                            []
+                        ]
+                        []
+                    ]
+                    []
+                ]
+                []
+            ]
+            [],
+          Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType)
+        ]
+    )
+
+deepStepFunc :: Wat.Func
+deepStepFunc =
+  Wat.Func
+    (Just (Wat.Identifier "deepStep"))
+    (Just (Wat.TypeUse (Wat.TypeIdx (Wat.Identifier_Idx (Wat.Identifier "step_type")))))
+    deepStepLocals
+    ( Wat.Expr
+        [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType),
+              Wat.Plain_Instr Wat.Return_PlainInstr
+            ]
+            [],
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          structGet "tag",
+          Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+          Wat.Plain_Instr Wat.I32Ne_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType),
+              Wat.Plain_Instr Wat.Return_PlainInstr
+            ]
+            [],
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          structGet "left",
+          Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          structGet "right",
+          Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "step")))),
+          Wat.Plain_Instr (Wat.LocalTee_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "res")))),
+          Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
+          Wat.Plain_Instr Wat.I32Eqz_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "res")))),
+              Wat.Plain_Instr Wat.Return_PlainInstr
+            ]
+            [],
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
+          Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "deepStep")))),
+          Wat.Plain_Instr (Wat.LocalTee_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "res")))),
+          Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
+          Wat.Plain_Instr Wat.I32Eqz_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+              Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
+              Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "res")))),
+              Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx),
+              Wat.Plain_Instr Wat.Return_PlainInstr
+            ]
+            [],
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
+          Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "deepStep")))),
+          Wat.Plain_Instr (Wat.LocalTee_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "res")))),
+          Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
+          Wat.Plain_Instr Wat.I32Eqz_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+              Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "res")))),
+              Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
+              Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx),
+              Wat.Plain_Instr Wat.Return_PlainInstr
+            ]
+            [],
+          Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType)
+        ]
+    )
+
+evaluateFunc :: Wat.Func
+evaluateFunc =
+  Wat.Func
+    (Just (Wat.Identifier "evaluate"))
+    (Just (Wat.TypeUse (Wat.TypeIdx (Wat.Identifier_Idx (Wat.Identifier "step_type")))))
+    evaluateLocals
+    ( Wat.Expr
+        [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "current")))),
+          loop_
+            (Wat.Identifier "eval_loop")
+            [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "current")))),
+              Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "deepStep")))),
+              Wat.Plain_Instr (Wat.LocalTee_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "next")))),
+              Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
+              Wat.Plain_Instr Wat.I32Eqz_PlainInstr,
+              if_
+                [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "next")))),
+                  Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "current")))),
+                  Wat.Plain_Instr (Wat.Br_PlainInstr (Wat.LabelIdx (Wat.Identifier_Idx (Wat.Identifier "eval_loop"))))
+                ]
+                []
+            ],
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "current"))))
+        ]
+    )
+
+printFunc :: Wat.Func
+printFunc =
+  Wat.Func
+    (Just (Wat.Identifier "print"))
+    (Just (Wat.TypeUse (Wat.TypeIdx (Wat.Identifier_Idx (Wat.Identifier "print_type")))))
+    printLocals
+    ( Wat.Expr
+        [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
+          if_
+            [Wat.Plain_Instr Wat.Return_PlainInstr]
+            [],
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          structGet "tag",
+          Wat.Plain_Instr (Wat.I32Const_PlainInstr 0),
+          Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 100),
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+              Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
+              Wat.Plain_Instr Wat.Return_PlainInstr
+            ]
+            [],
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          structGet "tag",
+          Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+          Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 101),
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+              Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
+              Wat.Plain_Instr Wat.Return_PlainInstr
+            ]
+            [],
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          structGet "tag",
+          Wat.Plain_Instr (Wat.I32Const_PlainInstr 2),
+          Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 102),
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+              Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
+              Wat.Plain_Instr Wat.Return_PlainInstr
+            ]
+            [],
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          structGet "tag",
+          Wat.Plain_Instr (Wat.I32Const_PlainInstr 3),
+          Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 103),
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+              Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
+              Wat.Plain_Instr Wat.Return_PlainInstr
+            ]
+            [],
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          structGet "tag",
+          Wat.Plain_Instr (Wat.I32Const_PlainInstr 4),
+          Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 104),
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+              Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
+              Wat.Plain_Instr Wat.Return_PlainInstr
+            ]
+            [],
+          Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+          structGet "tag",
+          Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+          Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+          if_
+            [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+              structGet "left",
+              Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
+              Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
+              structGet "right",
+              Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr 105),
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+              Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
+              Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
+              structGet "tag",
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+              Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+              if_
+                [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 111),
+                  Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+                  Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
+                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
+                  Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print")))),
+                  Wat.Plain_Instr (Wat.I32Const_PlainInstr 115),
+                  Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+                  Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str"))))
+                ]
+                [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
+                  Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print"))))
+                ],
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr 114),
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+              Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
+              Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
+              structGet "tag",
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
+              Wat.Plain_Instr Wat.I32Eq_PlainInstr,
+              if_
+                [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 111),
+                  Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+                  Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
+                  Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
+                  Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print")))),
+                  Wat.Plain_Instr (Wat.I32Const_PlainInstr 115),
+                  Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+                  Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str"))))
+                ]
+                [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
+                  Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print"))))
+                ]
+            ]
+            []
+        ]
+    )
+
+compileTerm :: Term -> [Wat.Instr]
+compileTerm S =
+  [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 0),
+    Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType),
+    Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType),
+    Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx)
+  ]
+compileTerm K =
+  [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+    Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType),
+    Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType),
+    Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx)
+  ]
+compileTerm I =
+  [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 2),
+    Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType),
+    Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType),
+    Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx)
+  ]
+compileTerm B =
+  [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 3),
+    Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType),
+    Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType),
+    Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx)
+  ]
+compileTerm C =
+  [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 4),
+    Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType),
+    Wat.Plain_Instr (Wat.RefNull_PlainInstr termHeapType),
+    Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx)
+  ]
+compileTerm (App1 f a) =
+  [Wat.Plain_Instr (Wat.I32Const_PlainInstr 5)]
+    <> compileTerm f
+    <> compileTerm a
+    <> [Wat.Plain_Instr (Wat.StructNew_PlainInstr termTypeIdx)]
+
+mainFunc :: Term -> Wat.Func
+mainFunc t =
+  Wat.Func
+    (Just (Wat.Identifier "main"))
+    (Just (Wat.TypeUse (Wat.TypeIdx (Wat.Identifier_Idx (Wat.Identifier "main_type")))))
+    []
+    ( Wat.Expr
+        ( compileTerm t
+            <> [ Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "evaluate")))),
+                 Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print")))),
+                 Wat.Plain_Instr (Wat.I32Const_PlainInstr 116),
+                 Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
+                 Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str"))))
+               ]
+        )
+    )
+
+makeType :: Wat.TypeDef -> Wat.Decl
+makeType typeDef = Wat.Type_Decl (Wat.Type (Wat.RecType [typeDef]))
+
 instance CompileWat () Term where
-  -- The module must encode data structures for SKIBC combinator terms.
-  -- The module must define an "evaluate" function that evaluates a SKIBC combinator term.
-  -- The module must define a "print" function that prints a SKIBC combinator term as a string in the format used by the `Show` and `Read` instances of `Term`.
-  -- The module must export a "main" function that evaluates the original SKIBC combinator term `t` given to `compileWat` and prints the result.
-  compileWat () t = todo "Compile a SKIBC combinator term into a WebAssembly module"
+  compileWat () t =
+    Wat.Module (Just (Wat.Identifier "skibc_module")) $
+      (Wat.Data_Decl <$> dataSegments)
+        <> [ Wat.Type_Decl termType,
+             Wat.Type_Decl fdWriteType,
+             Wat.Type_Decl mainType,
+             Wat.Type_Decl printStrType,
+             Wat.Type_Decl stepType,
+             Wat.Type_Decl printType,
+             Wat.Import_Decl fdWriteImport,
+             Wat.Mem_Decl memory,
+             Wat.Export_Decl memoryExport,
+             Wat.Func_Decl printStrFunc,
+             Wat.Func_Decl stepFunc,
+             Wat.Func_Decl deepStepFunc,
+             Wat.Func_Decl evaluateFunc,
+             Wat.Func_Decl printFunc,
+             Wat.Func_Decl (mainFunc t),
+             Wat.Export_Decl mainExport
+           ]

@@ -3,9 +3,7 @@
 module Language.Test.Skibc where
 
 import Control.Lens
-import Control.Monad (unless)
 import Control.Monad.Except (runExceptT)
-import Control.Monad.IO.Class (liftIO)
 import Control.Monad.State (evalState, evalStateT)
 import Data.Either (fromRight)
 import Data.Text.Lazy qualified as LazyText
@@ -16,7 +14,6 @@ import Language.Wasm.Wat (compileWat)
 import Numeric.Natural (Natural)
 import Test.QuickCheck (discard, idempotentIOProperty)
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (assertFailure)
 import Test.Tasty.QuickCheck (testProperty)
 import Text.Read (readMaybe)
 
@@ -43,16 +40,10 @@ spec =
                 & flip evalStateT maxEvaluationSteps
                 >>= either (const discard) pure
             outCompiled <-
-              t
-                & interpretWatModule [] . compileWat ()
+              compileWat () t
+                & interpretWatModule []
                 <&> readMaybe . LazyText.unpack . LazyText.strip . LazyTextEncoding.decodeUtf8
-                >>= maybe
-                  (fail "Failed to read output term")
-                  ( \(i, rest) -> do
-                      unless (LazyText.null rest) . liftIO $
-                        assertFailure ("The rest of output after parsed Int must be empty, but it was: " <> LazyText.unpack rest)
-                      pure i
-                  )
+                >>= maybe (fail "Failed to read output term") pure
                 & runExceptT
                 >>= either (fail . LazyText.unpack) pure
             pure $ outCompiled == outInterpreted
