@@ -1,4 +1,4 @@
 module Utilities.Unsafe where
 
 todo :: String -> a
-todo msg = error $ "[" <> "TODO" <> "] " <> msg
+todo msg = error $ "[" <> "TODO" <> "]: " <> msg

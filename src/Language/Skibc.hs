@@ -3,8 +3,13 @@ module Language.Skibc where
 
 import Control.Applicative ((<|>))
 import Control.Lens
+import Control.Monad.Except (MonadError (throwError))
+import Control.Monad.State (MonadState (get), put)
+import Data.Void (Void)
 import GHC.Generics (Generic)
 import Language.Wasm.Wat (CompileWat (compileWat))
+import Numeric.Natural (Natural, minusNaturalMaybe)
+import Prettyprinter (Doc, Pretty (pretty), dquotes, hsep, (<+>))
 import Test.QuickCheck (Arbitrary, oneof, sized)
 import Test.QuickCheck.Arbitrary (Arbitrary (arbitrary, shrink))
 import Utilities (halve)
@@ -22,6 +27,17 @@ data Term
   | C
   | App1 Term Term
   deriving (Generic, Eq, Show, Read, Ord)
+
+instance Pretty Term where
+  pretty S = "S"
+  pretty K = "K"
+  pretty I = "I"
+  pretty B = "B"
+  pretty C = "C"
+  pretty (App1 f a) = hsep $ go f [pretty a]
+    where
+      go (App1 f' a') ps = go f' (pretty a' : ps)
+      go a' ps = pretty a' : ps
 
 pattern App2 :: Term -> Term -> Term -> Term
 pattern App2 f x y = (f `App1` x) `App1` y
@@ -53,14 +69,15 @@ instance Arbitrary Term where
 -- Interpretation
 --------------------------------
 
-evaluate :: Term -> Term
-evaluate = evaluateLimit 1000
-
-evaluateLimit :: Int -> Term -> Term
-evaluateLimit 0 t = t
-evaluateLimit n t = case deepStep t of
-  Nothing -> t
-  Just t' -> evaluateLimit (n - 1) t'
+evaluate :: (MonadState Natural m, MonadError (Doc Void) m) => Term -> m Term
+evaluate t = do
+  gas <- get
+  case minusNaturalMaybe gas 1 of
+    Nothing -> throwError $ "Attempted to evaluate" <+> (dquotes . pretty) t <+> "when out of gas"
+    Just gas' -> put gas'
+  case deepStep t of
+    Nothing -> pure t
+    Just t' -> evaluate t'
 
 deepStep :: Term -> Maybe Term
 deepStep t@(App1 f a) =
@@ -86,4 +103,4 @@ instance CompileWat () Term where
   -- The module must define an "evaluate" function that evaluates a SKIBC combinator term.
   -- The module must define a "print" function that prints a SKIBC combinator term as a string in the format used by the `Show` and `Read` instances of `Term`.
   -- The module must export a "main" function that evaluates the original SKIBC combinator term `t` given to `compileWat` and prints the result.
-  compileWat () _t = todo "Compile a SKIBC combinator term into a WebAssembly module"
+  compileWat () t = todo "Compile a SKIBC combinator term into a WebAssembly module"
