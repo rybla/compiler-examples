@@ -1,3 +1,5 @@
+{- HLINT ignore "Use camelCase" -}
+
 -- | The SKIBC combinator calculus.
 module Language.Skibc where
 
@@ -233,16 +235,16 @@ mainExport =
 
 dataSegments :: [Wat.DataSegment]
 dataSegments =
-  [ makeDataSegment 100 "S",
-    makeDataSegment 101 "K",
-    makeDataSegment 102 "I",
-    makeDataSegment 103 "B",
-    makeDataSegment 104 "C",
-    makeDataSegment 105 "App1 ",
-    makeDataSegment 111 "(",
-    makeDataSegment 114 " ",
-    makeDataSegment 115 ")",
-    makeDataSegment 116 "\n"
+  [ makeDataSegment dataSegmentOffset_S "S",
+    makeDataSegment dataSegmentOffset_K "K",
+    makeDataSegment dataSegmentOffset_I "I",
+    makeDataSegment dataSegmentOffset_B "B",
+    makeDataSegment dataSegmentOffset_C "C",
+    makeDataSegment dataSegmentOffset_App1 "App1 ",
+    makeDataSegment dataSegmentOffset_LParen "(",
+    makeDataSegment dataSegmentOffset_Space " ",
+    makeDataSegment dataSegmentOffset_RParen ")",
+    makeDataSegment dataSegmentOffset_Newline "\n"
   ]
   where
     makeDataSegment :: Int32 -> String -> Wat.DataSegment
@@ -254,6 +256,18 @@ dataSegments =
             (Wat.Expr [Wat.Plain_Instr (Wat.I32Const_PlainInstr offset)])
         )
         (BS8.pack str)
+
+dataSegmentOffset_S, dataSegmentOffset_K, dataSegmentOffset_I, dataSegmentOffset_B, dataSegmentOffset_C, dataSegmentOffset_App1, dataSegmentOffset_LParen, dataSegmentOffset_Space, dataSegmentOffset_RParen, dataSegmentOffset_Newline :: Int32
+dataSegmentOffset_S = 100
+dataSegmentOffset_K = 101
+dataSegmentOffset_I = 102
+dataSegmentOffset_B = 103
+dataSegmentOffset_C = 104
+dataSegmentOffset_App1 = 105
+dataSegmentOffset_LParen = 111
+dataSegmentOffset_Space = 114
+dataSegmentOffset_RParen = 115
+dataSegmentOffset_Newline = 116
 
 if_ :: [Wat.Instr] -> [Wat.Instr] -> Wat.Instr
 if_ thenB elseB =
@@ -275,12 +289,26 @@ loop_ label body =
       body
       Nothing
 
-structGet :: String -> Wat.Instr
-structGet fieldName =
+getTag :: Wat.Instr
+getTag =
   Wat.Plain_Instr $
     Wat.StructGet_PlainInstr
       termTypeIdx
-      (Wat.FieldIdx (Wat.Identifier_Idx (Wat.Identifier (Text.pack fieldName))))
+      (Wat.FieldIdx (Wat.Identifier_Idx (Wat.Identifier (Text.pack "tag"))))
+
+getLeft :: Wat.Instr
+getLeft =
+  Wat.Plain_Instr $
+    Wat.StructGet_PlainInstr
+      termTypeIdx
+      (Wat.FieldIdx (Wat.Identifier_Idx (Wat.Identifier (Text.pack "left"))))
+
+getRight :: Wat.Instr
+getRight =
+  Wat.Plain_Instr $
+    Wat.StructGet_PlainInstr
+      termTypeIdx
+      (Wat.FieldIdx (Wat.Identifier_Idx (Wat.Identifier (Text.pack "right"))))
 
 stepLocals :: [Wat.Local]
 stepLocals =
@@ -348,7 +376,7 @@ stepFunc =
             ]
             [],
           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
-          structGet "tag",
+          getTag,
           Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
           Wat.Plain_Instr Wat.I32Ne_PlainInstr,
           if_
@@ -357,17 +385,17 @@ stepFunc =
             ]
             [],
           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
-          structGet "left",
+          getLeft,
           Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
-          structGet "right",
+          getRight,
           Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
           Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
           Wat.Plain_Instr Wat.I32Eqz_PlainInstr,
           if_
             [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
-              structGet "tag",
+              getTag,
               Wat.Plain_Instr (Wat.I32Const_PlainInstr 2),
               Wat.Plain_Instr Wat.I32Eq_PlainInstr,
               if_
@@ -382,22 +410,22 @@ stepFunc =
           Wat.Plain_Instr Wat.I32Eqz_PlainInstr,
           if_
             [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
-              structGet "tag",
+              getTag,
               Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
               Wat.Plain_Instr Wat.I32Eq_PlainInstr,
               if_
                 [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
-                  structGet "left",
+                  getLeft,
                   Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left")))),
                   Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
-                  structGet "right",
+                  getRight,
                   Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_right")))),
                   Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left")))),
                   Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
                   Wat.Plain_Instr Wat.I32Eqz_PlainInstr,
                   if_
                     [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left")))),
-                      structGet "tag",
+                      getTag,
                       Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
                       Wat.Plain_Instr Wat.I32Eq_PlainInstr,
                       if_
@@ -412,22 +440,22 @@ stepFunc =
                   Wat.Plain_Instr Wat.I32Eqz_PlainInstr,
                   if_
                     [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left")))),
-                      structGet "tag",
+                      getTag,
                       Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
                       Wat.Plain_Instr Wat.I32Eq_PlainInstr,
                       if_
                         [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left")))),
-                          structGet "left",
+                          getLeft,
                           Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_left")))),
                           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left")))),
-                          structGet "right",
+                          getRight,
                           Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_right")))),
                           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_left")))),
                           Wat.Plain_Instr Wat.RefIsNull_PlainInstr,
                           Wat.Plain_Instr Wat.I32Eqz_PlainInstr,
                           if_
                             [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_left")))),
-                              structGet "tag",
+                              getTag,
                               Wat.Plain_Instr (Wat.I32Const_PlainInstr 0),
                               Wat.Plain_Instr Wat.I32Eq_PlainInstr,
                               if_
@@ -445,7 +473,7 @@ stepFunc =
                                 ]
                                 [],
                               Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_left")))),
-                              structGet "tag",
+                              getTag,
                               Wat.Plain_Instr (Wat.I32Const_PlainInstr 3),
                               Wat.Plain_Instr Wat.I32Eq_PlainInstr,
                               if_
@@ -460,7 +488,7 @@ stepFunc =
                                 ]
                                 [],
                               Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f_left_left")))),
-                              structGet "tag",
+                              getTag,
                               Wat.Plain_Instr (Wat.I32Const_PlainInstr 4),
                               Wat.Plain_Instr Wat.I32Eq_PlainInstr,
                               if_
@@ -503,7 +531,7 @@ deepStepFunc =
             ]
             [],
           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
-          structGet "tag",
+          getTag,
           Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
           Wat.Plain_Instr Wat.I32Ne_PlainInstr,
           if_
@@ -512,10 +540,10 @@ deepStepFunc =
             ]
             [],
           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
-          structGet "left",
+          getLeft,
           Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
-          structGet "right",
+          getRight,
           Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
           Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "step")))),
@@ -597,105 +625,105 @@ printFunc =
             [Wat.Plain_Instr Wat.Return_PlainInstr]
             [],
           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
-          structGet "tag",
+          getTag,
           Wat.Plain_Instr (Wat.I32Const_PlainInstr 0),
           Wat.Plain_Instr Wat.I32Eq_PlainInstr,
           if_
-            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 100),
+            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr dataSegmentOffset_S),
               Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
               Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
               Wat.Plain_Instr Wat.Return_PlainInstr
             ]
             [],
           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
-          structGet "tag",
+          getTag,
           Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
           Wat.Plain_Instr Wat.I32Eq_PlainInstr,
           if_
-            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 101),
+            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr dataSegmentOffset_K),
               Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
               Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
               Wat.Plain_Instr Wat.Return_PlainInstr
             ]
             [],
           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
-          structGet "tag",
+          getTag,
           Wat.Plain_Instr (Wat.I32Const_PlainInstr 2),
           Wat.Plain_Instr Wat.I32Eq_PlainInstr,
           if_
-            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 102),
+            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr dataSegmentOffset_I),
               Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
               Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
               Wat.Plain_Instr Wat.Return_PlainInstr
             ]
             [],
           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
-          structGet "tag",
+          getTag,
           Wat.Plain_Instr (Wat.I32Const_PlainInstr 3),
           Wat.Plain_Instr Wat.I32Eq_PlainInstr,
           if_
-            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 103),
+            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr dataSegmentOffset_B),
               Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
               Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
               Wat.Plain_Instr Wat.Return_PlainInstr
             ]
             [],
           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
-          structGet "tag",
+          getTag,
           Wat.Plain_Instr (Wat.I32Const_PlainInstr 4),
           Wat.Plain_Instr Wat.I32Eq_PlainInstr,
           if_
-            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 104),
+            [ Wat.Plain_Instr (Wat.I32Const_PlainInstr dataSegmentOffset_C),
               Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
               Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
               Wat.Plain_Instr Wat.Return_PlainInstr
             ]
             [],
           Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
-          structGet "tag",
+          getTag,
           Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
           Wat.Plain_Instr Wat.I32Eq_PlainInstr,
           if_
             [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
-              structGet "left",
+              getLeft,
               Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
               Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Index_Idx 0))),
-              structGet "right",
+              getRight,
               Wat.Plain_Instr (Wat.LocalSet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
-              Wat.Plain_Instr (Wat.I32Const_PlainInstr 105),
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr dataSegmentOffset_App1),
               Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
               Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
               Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
-              structGet "tag",
+              getTag,
               Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
               Wat.Plain_Instr Wat.I32Eq_PlainInstr,
               if_
-                [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 111),
+                [ Wat.Plain_Instr (Wat.I32Const_PlainInstr dataSegmentOffset_LParen),
                   Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
                   Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
                   Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
                   Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print")))),
-                  Wat.Plain_Instr (Wat.I32Const_PlainInstr 115),
+                  Wat.Plain_Instr (Wat.I32Const_PlainInstr dataSegmentOffset_RParen),
                   Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
                   Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str"))))
                 ]
                 [ Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "f")))),
                   Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print"))))
                 ],
-              Wat.Plain_Instr (Wat.I32Const_PlainInstr 114),
+              Wat.Plain_Instr (Wat.I32Const_PlainInstr dataSegmentOffset_Space),
               Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
               Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
               Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
-              structGet "tag",
+              getTag,
               Wat.Plain_Instr (Wat.I32Const_PlainInstr 5),
               Wat.Plain_Instr Wat.I32Eq_PlainInstr,
               if_
-                [ Wat.Plain_Instr (Wat.I32Const_PlainInstr 111),
+                [ Wat.Plain_Instr (Wat.I32Const_PlainInstr dataSegmentOffset_LParen),
                   Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
                   Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str")))),
                   Wat.Plain_Instr (Wat.LocalGet_PlainInstr (Wat.LocalIdx (Wat.Identifier_Idx (Wat.Identifier "a")))),
                   Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print")))),
-                  Wat.Plain_Instr (Wat.I32Const_PlainInstr 115),
+                  Wat.Plain_Instr (Wat.I32Const_PlainInstr dataSegmentOffset_RParen),
                   Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
                   Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str"))))
                 ]
@@ -754,7 +782,7 @@ mainFunc t =
         ( compileTerm t
             <> [ Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "evaluate")))),
                  Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print")))),
-                 Wat.Plain_Instr (Wat.I32Const_PlainInstr 116),
+                 Wat.Plain_Instr (Wat.I32Const_PlainInstr dataSegmentOffset_Newline),
                  Wat.Plain_Instr (Wat.I32Const_PlainInstr 1),
                  Wat.Plain_Instr (Wat.Call_PlainInstr (Wat.FuncIdx (Wat.Identifier_Idx (Wat.Identifier "print_str"))))
                ]
